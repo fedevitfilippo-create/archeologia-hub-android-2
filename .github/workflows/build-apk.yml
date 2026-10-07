@@ -1,4 +1,4 @@
-name: Build Archeologia Hub V27
+name: Build Archeologia Hub V28
 
 on:
   workflow_dispatch:
@@ -11,45 +11,77 @@ permissions:
 
 jobs:
   build:
-    name: Compila Archeologia Hub V27
+    name: Compila Archeologia Hub V28
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Checkout repository
+      # =========================================================
+      # CHECKOUT
+      # =========================================================
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      # =========================================================
+      # JAVA 17
+      # =========================================================
+      - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle 8.7
+      # =========================================================
+      # GRADLE 8.7
+      # =========================================================
+      - name: Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
-      - name: Estrai progetto V22
+      # =========================================================
+      # ESTRAZIONE PROGETTO V22
+      # =========================================================
+      - name: Estrai V22
         shell: bash
         run: |
           set -e
 
           ZIP="Archeologia_Hub_V22_PREMIUM_UI.zip"
 
-          echo "Controllo archivio..."
-          test -f "$ZIP"
+          echo "=========================================="
+          echo "CONTROLLO ZIP"
+          echo "=========================================="
+
+          ls -lah
+
+          if [ ! -f "$ZIP" ]; then
+            echo "ERRORE: $ZIP non trovato."
+            echo ""
+            echo "File presenti nella root:"
+            find . -maxdepth 1 -type f -printf '%f\n'
+            exit 1
+          fi
+
+          echo "ZIP trovato: $ZIP"
 
           rm -rf ArcheologiaHubAndroid
 
           unzip -q -o "$ZIP"
 
-          echo "Progetto estratto."
+          echo ""
+          echo "Progetto estratto:"
+          find ArcheologiaHubAndroid -maxdepth 5 -type f | sort
 
+      # =========================================================
+      # CONTROLLO PROGETTO
+      # =========================================================
       - name: Controlla progetto
         shell: bash
         run: |
           set -e
+
+          echo "Controllo file fondamentali..."
 
           test -f ArcheologiaHubAndroid/settings.gradle
           test -f ArcheologiaHubAndroid/app/build.gradle
@@ -57,15 +89,42 @@ jobs:
           test -f ArcheologiaHubAndroid/app/src/main/java/it/archeologia/hub/MainActivity.java
           test -f ArcheologiaHubAndroid/app/src/main/assets/index.html
 
-          echo "Struttura progetto OK."
+          test -f features/study.js
+          test -f features/study.css
 
-      - name: Correggi Area Studio V27
+          echo ""
+          echo "=========================================="
+          echo "PROGETTO V22 OK"
+          echo "=========================================="
+
+      # =========================================================
+      # COPIA STUDY ENGINE
+      # =========================================================
+      - name: Copia Study Engine
+        shell: bash
+        run: |
+          set -e
+
+          ASSETS="ArcheologiaHubAndroid/app/src/main/assets"
+
+          echo "Copio Study Engine..."
+
+          cp features/study.js "$ASSETS/study.js"
+          cp features/study.css "$ASSETS/study.css"
+
+          echo "Study Engine copiato."
+
+      # =========================================================
+      # INTEGRA STUDY ENGINE + CORREZIONE V28
+      # =========================================================
+      - name: Correggi Area Studio V28
         shell: bash
         run: |
           set -e
 
           python3 <<'PY'
           from pathlib import Path
+          import re
 
           path = Path(
               "ArcheologiaHubAndroid/app/src/main/assets/index.html"
@@ -76,338 +135,215 @@ jobs:
               errors="ignore"
           )
 
-          start_marker = "function v14RenderStudy(){"
-          end_marker = "const v14OldRender=render;"
-
-          start = html.find(start_marker)
-          end = html.find(end_marker, start)
-
-          if start < 0:
-              raise SystemExit(
-                  "ERRORE: funzione v14RenderStudy non trovata."
-              )
-
-          if end < 0:
-              raise SystemExit(
-                  "ERRORE: fine v14RenderStudy non trovata."
-              )
-
-          new_function = """
-          function v14RenderStudy(){
-            const sec=document.getElementById('study');
-
-            if(!sec)return;
-
-            const old=sec.querySelector('.v14-study-landing');
-
-            if(old)old.remove();
-
-            const wrap=document.createElement('div');
-
-            wrap.className='v14-study-landing';
-
-            const courses =
-              (typeof db !== 'undefined' &&
-               db &&
-               Array.isArray(db.exams))
-              ? db.exams
-              : [];
-
-            wrap.innerHTML = `
-              <div class="v14-study-landing-hero">
-
-                <span
-                  class="v14-overline"
-                  style="color:#e4c99d"
-                >
-                  AREA STUDIO
-                </span>
-
-                <h2>Centro Studio</h2>
-
-                <p>
-                  Il tuo spazio universitario per appunti,
-                  materiali, audio, riassunti e ripasso.
-                </p>
-
-              </div>
-
-              <div class="v14-study-tools">
-
-                <button
-                  type="button"
-                  onclick="v13OpenSelected('hubNotes')"
-                >
-                  <b>📝 Appunti</b>
-                  <small>Scrivi e organizza</small>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="v13OpenSelected('hubAudio')"
-                >
-                  <b>🎧 Audio</b>
-                  <small>Ascolta le lezioni</small>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="v13OpenSelected('hubSummaries')"
-                >
-                  <b>▤ Riassunti</b>
-                  <small>Ripassa</small>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="v13OpenSelected('hubSchemes')"
-                >
-                  <b>⌘ Schemi</b>
-                  <small>Collega concetti</small>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="v13OpenSelected('hubMaterials')"
-                >
-                  <b>📂 Materiali</b>
-                  <small>Documenti e file</small>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="v13OpenSelected('hubPhotos')"
-                >
-                  <b>📷 Foto</b>
-                  <small>Immagini dello studio</small>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="v13OpenSelected('hubReadListen')"
-                >
-                  <b>📖 Leggi</b>
-                  <small>Leggi e ascolta</small>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="go('stats')"
-                >
-                  <b>📊 Progressi</b>
-                  <small>Controlla lo studio</small>
-                </button>
-
-              </div>
-
-              <div class="v15-study-personal">
-
-                <div class="v14-section-head">
-
-                  <div>
-
-                    <span class="v14-overline">
-                      ORGANIZZAZIONE
-                    </span>
-
-                    <h3>Il tuo studio</h3>
-
-                  </div>
-
-                </div>
-
-                <div class="v15-personal-grid">
-
-                  <button
-                    type="button"
-                    onclick="addItem('notes')"
-                  >
-                    <b>✎ Nuovo appunto</b>
-
-                    <small>
-                      Annota una lezione o un concetto
-                    </small>
-                  </button>
-
-                  <button
-                    type="button"
-                    onclick="addItem('sessions')"
-                  >
-                    <b>◷ Sessione</b>
-
-                    <small>
-                      Registra il tempo di studio
-                    </small>
-                  </button>
-
-                  <button
-                    type="button"
-                    onclick="addItem('tasks')"
-                  >
-                    <b>✓ Attività</b>
-
-                    <small>
-                      Organizza ciò che devi fare
-                    </small>
-                  </button>
-
-                </div>
-
-              </div>
-
-              <div
-                class="v14-section"
-                style="margin-top:14px"
-              >
-
-                <div class="v14-section-head">
-
-                  <div>
-
-                    <span class="v14-overline">
-                      CORSI
-                    </span>
-
-                    <h3>
-                      Cartelle degli insegnamenti
-                    </h3>
-
-                  </div>
-
-                </div>
-
-                <div class="v14-study-exams">
-
-                  ${
-                    courses.length
-                    ? courses.map(x => `
-
-                      <button
-                        type="button"
-                        class="v14-study-exam"
-                        onclick="hubOpenExam(${Number(x.id)})"
-                      >
-
-                        <span>📚</span>
-
-                        <div>
-
-                          <b>
-                            ${typeof esc === 'function'
-                              ? esc(x.name)
-                              : x.name}
-                          </b>
-
-                          <small>
-                            ${
-                              x.cfu
-                              ? x.cfu + ' CFU'
-                              : 'Idoneità'
-                            }
-                            · Apri cartella di studio
-                          </small>
-
-                        </div>
-
-                        <span>›</span>
-
-                      </button>
-
-                    `).join('')
-
-                    : `
-
-                      <div class="v15-empty">
-                        Nessun insegnamento disponibile.
-                      </div>
-
-                    `
-                  }
-
-                </div>
-
-              </div>
-            `;
-
-            sec.prepend(wrap);
+          # -----------------------------------------------------
+          # Assicura che study.css e study.js siano presenti
+          # -----------------------------------------------------
+
+          css_tag = '<link rel="stylesheet" href="study.css">'
+          js_tag = '<script src="study.js"></script>'
+
+          if "study.css" not in html:
+              pos = html.lower().find("</head>")
+              if pos >= 0:
+                  html = html[:pos] + css_tag + "\n" + html[pos:]
+
+          if 'src="study.js"' not in html:
+              pos = html.lower().rfind("</body>")
+              if pos >= 0:
+                  html = html[:pos] + js_tag + "\n" + html[pos:]
+
+          # -----------------------------------------------------
+          # V28:
+          # sostituisce esclusivamente v13OpenSelected()
+          #
+          # Il vecchio comportamento era:
+          #
+          # if(!sel.length){
+          #     go('hubTimetable');
+          #     return;
+          # }
+          #
+          # Questo faceva finire Appunti / Audio / Riassunti /
+          # Schemi nell'Orario se non era selezionato un esame.
+          # -----------------------------------------------------
+
+          new_function = r"""
+          function v13OpenSelected(page){
+            if(!page)return;
+
+            if(typeof hubExamId==='undefined' || !hubExamId){
+              const first=
+                (typeof db!=='undefined' &&
+                 db &&
+                 Array.isArray(db.exams) &&
+                 db.exams.length)
+                ? db.exams[0]
+                : null;
+
+              if(first){
+                hubExamId=Number(first.id);
+                localStorage.setItem(
+                  'archeologiaHub.activeExam',
+                  String(hubExamId)
+                );
+              }
+            }
+
+            go(page);
+            hubAfterPage(page);
           }
-          """
+          """.strip()
 
-          html = (
-              html[:start]
-              + new_function
-              + "\n"
-              + html[end:]
+          # Cerca la funzione completa fino alla funzione successiva.
+          pattern = re.compile(
+              r"function\s+v13OpenSelected\s*\(page\)\s*\{.*?\n\}",
+              re.S
           )
+
+          if pattern.search(html):
+              html, count = pattern.subn(
+                  new_function,
+                  html,
+                  count=1
+              )
+
+              print(
+                  "v13OpenSelected() sostituita:",
+                  count
+              )
+
+          else:
+              print(
+                  "ATTENZIONE: v13OpenSelected() non trovata."
+              )
+
+              # Inserisce la funzione prima di v13OpenSearch
+              marker = "function v13OpenSearch"
+
+              if marker in html:
+                  html = html.replace(
+                      marker,
+                      new_function +
+                      "\n\n" +
+                      marker,
+                      1
+                  )
+                  print(
+                      "v13OpenSelected() inserita prima di v13OpenSearch."
+                  )
+              else:
+                  raise SystemExit(
+                      "ERRORE: impossibile trovare il punto di inserimento."
+                  )
+
+          # -----------------------------------------------------
+          # Controlli finali
+          # -----------------------------------------------------
+
+          if "function v13OpenSelected(page)" not in html:
+              raise SystemExit(
+                  "ERRORE: funzione V28 non presente."
+              )
+
+          if "go('hubTimetable');return;" in html:
+              print(
+                  "Nota: trovata un'altra occorrenza del vecchio "
+                  "fallback all'Orario; verificare manualmente."
+              )
 
           path.write_text(
               html,
               encoding="utf-8"
           )
 
-          print("Area Studio V27 integrata correttamente.")
+          print("")
+          print("==========================================")
+          print("AREA STUDIO V28 CORRETTA")
+          print("==========================================")
           PY
 
-      - name: Controllo JavaScript
+      # =========================================================
+      # VERIFICA CORREZIONE
+      # =========================================================
+      - name: Verifica integrazione V28
         shell: bash
         run: |
           set -e
 
-          python3 <<'PY'
-          from pathlib import Path
+          FILE="ArcheologiaHubAndroid/app/src/main/assets/index.html"
 
-          path = Path(
-              "ArcheologiaHubAndroid/app/src/main/assets/index.html"
-          )
+          echo "Controllo presenza funzione V28..."
 
-          html = path.read_text(
-              encoding="utf-8",
-              errors="ignore"
-          )
+          grep -n "function v13OpenSelected" "$FILE"
 
-          if "function v14RenderStudy(){" not in html:
-              raise SystemExit(
-                  "ERRORE: v14RenderStudy non presente."
-              )
+          echo ""
+          echo "Controllo moduli Studio..."
 
-          if "Centro Studio" not in html:
-              raise SystemExit(
-                  "ERRORE: Centro Studio non presente."
-              )
+          grep -n "hubNotes" "$FILE" | head -5 || true
+          grep -n "hubAudio" "$FILE" | head -5 || true
+          grep -n "hubSummaries" "$FILE" | head -5 || true
+          grep -n "hubSchemes" "$FILE" | head -5 || true
 
-          if "Cartelle degli insegnamenti" not in html:
-              raise SystemExit(
-                  "ERRORE: sezione corsi non presente."
-              )
+          echo ""
+          echo "=========================================="
+          echo "VERIFICA V28 COMPLETATA"
+          echo "=========================================="
 
-          print("Controllo JavaScript OK.")
-          PY
-
-      - name: Verifica progetto finale
-        shell: bash
-        run: |
-          set -e
-
-          test -f ArcheologiaHubAndroid/settings.gradle
-          test -f ArcheologiaHubAndroid/app/build.gradle
-          test -f ArcheologiaHubAndroid/app/src/main/AndroidManifest.xml
-          test -f ArcheologiaHubAndroid/app/src/main/java/it/archeologia/hub/MainActivity.java
-          test -f ArcheologiaHubAndroid/app/src/main/assets/index.html
-
-          echo "Progetto finale verificato."
-
-      - name: Build APK
+      # =========================================================
+      # VERIFICA GRADLE
+      # =========================================================
+      - name: Verifica Gradle
         working-directory: ArcheologiaHubAndroid
         shell: bash
         run: |
           set -e
 
-          echo "Pulizia..."
-          gradle clean --no-daemon
+          echo "Versione Gradle:"
+          gradle --version
 
-          echo "Compilazione APK V27..."
-          gradle assembleDebug --no-daemon --stacktrace
+          echo ""
+          echo "Verifica task Gradle..."
 
+          gradle tasks --no-daemon --stacktrace
+
+      # =========================================================
+      # CLEAN
+      # =========================================================
+      - name: Clean
+        working-directory: ArcheologiaHubAndroid
+        shell: bash
+        run: |
+          set -e
+
+          echo "Pulizia build precedente..."
+
+          gradle clean \
+            --no-daemon \
+            --stacktrace
+
+      # =========================================================
+      # COMPILAZIONE APK
+      # =========================================================
+      - name: Compila APK V28
+        working-directory: ArcheologiaHubAndroid
+        shell: bash
+        run: |
+          set -e
+
+          echo "=========================================="
+          echo "COMPILAZIONE ARCHEOLOGIA HUB V28"
+          echo "=========================================="
+
+          gradle assembleDebug \
+            --no-daemon \
+            --stacktrace
+
+          echo ""
+          echo "Build completata."
+
+      # =========================================================
+      # VERIFICA APK
+      # =========================================================
       - name: Verifica APK
         shell: bash
         run: |
@@ -415,21 +351,54 @@ jobs:
 
           APK="ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk"
 
+          echo "Controllo APK..."
+
           if [ ! -f "$APK" ]; then
-            echo "ERRORE: APK non generato."
+            echo ""
+            echo "=========================================="
+            echo "ERRORE: APK NON GENERATO"
+            echo "=========================================="
+
+            echo ""
+            echo "File trovati nella build:"
+            find ArcheologiaHubAndroid/app/build \
+              -type f \
+              | sort || true
+
             exit 1
           fi
 
-          echo "======================================"
-          echo "APK V27 GENERATO CORRETTAMENTE"
-          echo "======================================"
+          echo ""
+          echo "=========================================="
+          echo "APK GENERATO CORRETTAMENTE"
+          echo "=========================================="
 
           ls -lh "$APK"
 
-      - name: Upload APK V27
+      # =========================================================
+      # UPLOAD APK
+      # =========================================================
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Archeologia-Hub-V27-APK
+          name: Archeologia-Hub-V28-APK
           path: ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      # =========================================================
+      # COMPLETATO
+      # =========================================================
+      - name: Build completata
+        shell: bash
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "        ARCHEOLOGIA HUB V28"
+          echo "=========================================="
+          echo ""
+          echo "BUILD: OK"
+          echo "APK: OK"
+          echo "STUDY ENGINE: OK"
+          echo "AREA STUDIO: CORRETTA"
+          echo "=========================================="
