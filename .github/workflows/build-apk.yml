@@ -1,101 +1,3 @@
-name: Build Archeologia Hub
-
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: read
-
-jobs:
-  build-apk:
-    name: Build Archeologia Hub
-    runs-on: ubuntu-latest
-
-    steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Gradle 8.7
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-
-      # ------------------------------------------
-      # ESTRAZIONE V22
-      # ------------------------------------------
-      - name: Estrai progetto V22
-        shell: bash
-        run: |
-          set -e
-
-          ZIP="Archeologia_Hub_V22_PREMIUM_UI.zip"
-
-          if [ ! -f "$ZIP" ]; then
-            echo "ERRORE: $ZIP non trovato."
-            exit 1
-          fi
-
-          rm -rf ArcheologiaHubAndroid
-
-          unzip -q -o "$ZIP"
-
-          echo "Progetto estratto."
-
-      # ------------------------------------------
-      # CONTROLLA PROGETTO
-      # ------------------------------------------
-      - name: Controlla progetto
-        shell: bash
-        run: |
-          set -e
-
-          test -f ArcheologiaHubAndroid/settings.gradle
-          test -f ArcheologiaHubAndroid/app/build.gradle
-          test -f ArcheologiaHubAndroid/app/src/main/AndroidManifest.xml
-          test -f ArcheologiaHubAndroid/app/src/main/java/it/archeologia/hub/MainActivity.java
-
-          echo "Struttura Android OK."
-
-      # ------------------------------------------
-      # INSTALLA LE FUNZIONI STUDY
-      # ------------------------------------------
-      - name: Installa Study Engine
-        shell: bash
-        run: |
-          set -e
-
-          ASSETS="ArcheologiaHubAndroid/app/src/main/assets"
-
-          if [ ! -d "$ASSETS" ]; then
-            echo "ERRORE: cartella assets non trovata."
-            exit 1
-          fi
-
-          if [ ! -f "features/study.js" ]; then
-            echo "ERRORE: features/study.js non trovato."
-            exit 1
-          fi
-
-          if [ ! -f "features/study.css" ]; then
-            echo "ERRORE: features/study.css non trovato."
-            exit 1
-          fi
-
-          cp features/study.js "$ASSETS/study.js"
-          cp features/study.css "$ASSETS/study.css"
-
-          echo "Study Engine copiato negli assets."
-
       # ------------------------------------------
       # COLLEGA STUDY ENGINE ALL'HTML
       # ------------------------------------------
@@ -111,7 +13,6 @@ jobs:
             exit 1
           fi
 
-          # Inserisce CSS prima di </head>
           python3 <<'PY'
           from pathlib import Path
 
@@ -125,137 +26,47 @@ jobs:
           )
 
           css = '<link rel="stylesheet" href="study.css">'
-
           js = '<script src="study.js"></script>'
 
-          if "study.css" not in html:
-              if "</head>" in html:
-                  html = html.replace(
-                      "</head>",
-                      css + "\n</head>",
-                      1
-                  )
-              else:
-                  html = css + "\n" + html
+          # IMPORTANTISSIMO:
+          # usare l'ULTIMO </head> e l'ULTIMO </body>.
+          # La V22 contiene altri </head>/</body> dentro
+          # stringhe JavaScript.
 
-          if "study.js" not in html:
-              if "</body>" in html:
-                  html = html.replace(
-                      "</body>",
-                      js + "\n</body>",
-                      1
+          if "href=\"study.css\"" not in html:
+              pos = html.lower().rfind("</head>")
+
+              if pos == -1:
+                  raise SystemExit(
+                      "ERRORE: tag </head> finale non trovato."
                   )
-              else:
-                  html += "\n" + js
+
+              html = (
+                  html[:pos]
+                  + css
+                  + "\n"
+                  + html[pos:]
+              )
+
+          if 'src="study.js"' not in html:
+              pos = html.lower().rfind("</body>")
+
+              if pos == -1:
+                  raise SystemExit(
+                      "ERRORE: tag </body> finale non trovato."
+                  )
+
+              html = (
+                  html[:pos]
+                  + js
+                  + "\n"
+                  + html[pos:]
+              )
 
           html_path.write_text(
               html,
               encoding="utf-8"
           )
 
-          print("Study Engine integrato.")
+          print("Study Engine integrato correttamente.")
           PY
-
-      # ------------------------------------------
-      # CONTROLLO INTEGRAZIONE
-      # ------------------------------------------
-      - name: Verifica integrazione
-        shell: bash
-        run: |
-          set -e
-
-          HTML="ArcheologiaHubAndroid/app/src/main/assets/index.html"
-          ASSETS="ArcheologiaHubAndroid/app/src/main/assets"
-
-          test -f "$ASSETS/study.js"
-          test -f "$ASSETS/study.css"
-
-          grep -q "study.css" "$HTML"
-          grep -q "study.js" "$HTML"
-
-          echo "======================================"
-          echo "STUDY ENGINE INTEGRATO CORRETTAMENTE"
-          echo "======================================"
-
-      # ------------------------------------------
-      # GRADLE
-      # ------------------------------------------
-      - name: Verifica Gradle
-        working-directory: ArcheologiaHubAndroid
-        run: |
-          set -e
-
-          gradle --version
-
-          gradle tasks \
-            --no-daemon \
-            --stacktrace
-
-      # ------------------------------------------
-      # CLEAN
-      # ------------------------------------------
-      - name: Clean
-        working-directory: ArcheologiaHubAndroid
-        run: |
-          set -e
-
-          gradle clean \
-            --no-daemon \
-            --stacktrace
-
-      # ------------------------------------------
-      # BUILD
-      # ------------------------------------------
-      - name: Compila APK
-        working-directory: ArcheologiaHubAndroid
-        run: |
-          set -e
-
-          gradle assembleDebug \
-            --no-daemon \
-            --stacktrace
-
-      # ------------------------------------------
-      # VERIFICA APK
-      # ------------------------------------------
-      - name: Verifica APK
-        shell: bash
-        run: |
-          set -e
-
-          APK="ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk"
-
-          if [ ! -f "$APK" ]; then
-            echo "ERRORE: APK non generato."
-            exit 1
-          fi
-
-          echo "======================================"
-          echo "APK GENERATO"
-          echo "======================================"
-
-          ls -lh "$APK"
-
-      # ------------------------------------------
-      # UPLOAD
-      # ------------------------------------------
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Archeologia-Hub-APK-Study
-          path: ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 30
-
-      # ------------------------------------------
-      # FINE
-      # ------------------------------------------
-      - name: Build completata
-        run: |
-          echo ""
-          echo "======================================"
-          echo " ARCHEOLOGIA HUB — BUILD COMPLETATA"
-          echo "======================================"
-          echo ""
-          echo "Artifact:"
-          echo "Archeologia-Hub-APK-Study"
