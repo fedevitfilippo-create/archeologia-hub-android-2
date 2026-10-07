@@ -304,3 +304,107 @@
       '</div>'
     );
   }
+    function flipCard() {
+    flashFlipped = !flashFlipped;
+    flashcards();
+  }
+
+  function nextFlashcard() {
+    flashIndex = (flashIndex + 1) % FLASHCARDS.length;
+    flashFlipped = false;
+    flashcards();
+  }
+
+  function previousFlashcard() {
+    flashIndex =
+      (flashIndex - 1 + FLASHCARDS.length) % FLASHCARDS.length;
+
+    flashFlipped = false;
+    flashcards();
+  }
+
+  function progress() {
+    const quiz = state.quizBest || 0;
+
+    showPanel(
+      "I tuoi progressi",
+      '<div class="ah-study-progress-grid">' +
+        progressBox("⭐", "Preferiti", state.favorites.length) +
+        progressBox("📝", "Appunti", state.notes.length) +
+        progressBox("⏱️", "Minuti studiati", state.studyMinutes) +
+        progressBox("🎓", "Sessioni", state.sessions) +
+        progressBox("🧠", "Miglior quiz", quiz + "%") +
+      "</div>" +
+      '<div class="ah-study-progress-bar">' +
+        '<span style="width:' + Math.min(quiz,100) + '%"></span>' +
+      "</div>" +
+      '<p class="ah-study-center">Miglior risultato quiz: ' +
+        quiz +
+        "%</p>"
+    );
+  }
+
+  function progressBox(icon, title, value) {
+    return (
+      '<div class="ah-study-progress-box">' +
+        '<span>' + icon + "</span>" +
+        "<small>" + esc(title) + "</small>" +
+        "<strong>" + esc(value) + "</strong>" +
+      "</div>"
+    );
+  }
+
+  function examMode() {
+    quizIndex = 0;
+    quizScore = 0;
+
+    showPanel(
+      "Modalità Esame",
+      '<div class="ah-study-exam-intro">' +
+        '<div class="ah-study-exam-icon">🎓</div>' +
+        "<h3>Simulazione d'esame</h3>" +
+        "<p>Affronta una sessione di domande di archeologia e verifica la tua preparazione.</p>" +
+        '<ul>' +
+          "<li>5 domande</li>" +
+          "<li>Una risposta per domanda</li>" +
+          "<li>Risultato finale in percentuale</li>" +
+          "<li>Il miglior risultato viene salvato</li>" +
+        "</ul>" +
+        '<button class="ah-study-primary" data-action="start-exam">' +
+          "Inizia l'esame" +
+        "</button>" +
+      "</div>"
+    );
+  }
+
+  function startExam() {
+    quizIndex = 0;
+    quizScore = 0;
+    quiz();
+  }
+
+  function searchView() {
+    showPanel(
+      "Ricerca nell'app",
+      '<input id="ah-search-input" class="ah-study-search" ' +
+        'placeholder="Cerca un argomento..." autocomplete="off">' +
+      '<div id="ah-search-results" class="ah-study-search-results">' +
+        '<div class="ah-study-empty">Scrivi per cercare.</div>' +
+      "</div>"
+    );
+
+    const input = document.getElementById("ah-search-input");
+
+    if (input) {
+      input.addEventListener("input", function () {
+        performSearch(input.value);
+      });
+
+      setTimeout(function () {
+        input.focus();
+      }, 100);
+    }
+  }
+
+  function performSearch(query) {
+    const
