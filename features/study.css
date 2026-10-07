@@ -1,16 +1,841 @@
-.archeologia-study-panel {
-  padding: 16px;
-  border-radius: 16px;
-  margin: 12px 0;
+/* =========================================================
+   ARCHEOLOGIA HUB — CENTRO STUDIO
+   ========================================================= */
+
+#ah-study-root {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  pointer-events: none;
+  font-family: inherit;
 }
 
-.archeologia-study-button {
+#ah-study-root * {
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------
+   Pulsante principale
+   --------------------------------------------------------- */
+
+.ah-study-launch {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1000000;
+
   border: 0;
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 999px;
+
+  padding: 13px 18px;
+
+  background: linear-gradient(
+    135deg,
+    #8b5a2b,
+    #b8793c
+  );
+
+  color: #fff;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.25);
+
+  cursor: pointer;
+
+  pointer-events: auto;
+
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease;
+}
+
+.ah-study-launch:active {
+  transform: scale(.96);
+}
+
+/* ---------------------------------------------------------
+   Overlay
+   --------------------------------------------------------- */
+
+.ah-study-overlay {
+  position: fixed;
+  inset: 0;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+
+  background: rgba(0,0,0,.48);
+
+  opacity: 0;
+  visibility: hidden;
+
+  transition:
+    opacity .22s ease,
+    visibility .22s ease;
+
+  pointer-events: none;
+}
+
+.ah-study-panel.is-open
+~ * {
+  pointer-events: auto;
+}
+
+.ah-study-overlay:has(.ah-study-panel.is-open) {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------
+   Pannello
+   --------------------------------------------------------- */
+
+.ah-study-panel {
+  width: min(760px, 100%);
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  background: #f7f1e7;
+  color: #2f251c;
+
+  border-radius: 24px 24px 0 0;
+
+  box-shadow:
+    0 -12px 40px rgba(0,0,0,.28);
+
+  transform: translateY(30px);
+
+  transition:
+    transform .25s ease;
+
+  padding-bottom: 25px;
+}
+
+.ah-study-panel.is-open {
+  transform: translateY(0);
+}
+
+/* ---------------------------------------------------------
+   Header
+   --------------------------------------------------------- */
+
+.ah-study-head {
+  position: sticky;
+  top: 0;
+
+  z-index: 5;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 20px;
+
+  background: rgba(247,241,231,.96);
+
+  backdrop-filter: blur(10px);
+
+  border-bottom: 1px solid rgba(100,70,40,.14);
+}
+
+.ah-study-kicker {
+  display: block;
+
+  margin-bottom: 4px;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+
+  color: #9a6a38;
+}
+
+.ah-study-head h2 {
+  margin: 0;
+
+  font-size: 25px;
+  line-height: 1.15;
+}
+
+.ah-study-close {
+  width: 40px;
+  height: 40px;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: rgba(80,50,30,.09);
+
+  color: #4a3524;
+
+  font-size: 26px;
+
   cursor: pointer;
 }
 
-.archeologia-favorite-active {
+/* ---------------------------------------------------------
+   Corpo
+   --------------------------------------------------------- */
+
+.ah-study-body {
+  padding: 20px;
+}
+
+/* ---------------------------------------------------------
+   Dashboard statistiche
+   --------------------------------------------------------- */
+
+.ah-study-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0,1fr));
+
+  gap: 12px;
+
+  margin-bottom: 18px;
+}
+
+.ah-study-stat {
+  min-height: 115px;
+
+  border: 1px solid rgba(100,70,40,.12);
+
+  border-radius: 18px;
+
+  background: #fffaf3;
+
+  padding: 15px;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  box-shadow:
+    0 4px 14px rgba(60,40,20,.07);
+}
+
+.ah-study-stat-icon {
+  font-size: 24px;
+}
+
+.ah-study-stat-title {
+  font-size: 12px;
+  color: #75604d;
+}
+
+.ah-study-stat strong {
+  font-size: 24px;
+}
+
+/* ---------------------------------------------------------
+   Azioni
+   --------------------------------------------------------- */
+
+.ah-study-actions {
+  display: flex;
+  flex-direction: column;
+
+  gap: 9px;
+}
+
+.ah-study-actions.two {
+  flex-direction: row;
+}
+
+.ah-study-action {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: 13px;
+
+  padding: 15px;
+
+  border: 1px solid rgba(100,70,40,.12);
+
+  border-radius: 15px;
+
+  background: #fffaf3;
+
+  color: #35281d;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 3px 10px rgba(60,40,20,.05);
+}
+
+.ah-study-action span {
+  font-size: 21px;
+}
+
+.ah-study-action b {
+  flex: 1;
+  font-size: 14px;
+}
+
+.ah-study-action i {
+  font-style: normal;
+  font-size: 22px;
+  color: #9a6a38;
+}
+
+/* ---------------------------------------------------------
+   Pulsanti
+   --------------------------------------------------------- */
+
+.ah-study-primary,
+.ah-study-secondary {
+  border: 0;
+
+  border-radius: 13px;
+
+  padding: 13px 17px;
+
+  font-size: 14px;
   font-weight: 700;
+
+  cursor: pointer;
+}
+
+.ah-study-primary {
+  background: #8b5a2b;
+  color: white;
+}
+
+.ah-study-secondary {
+  background: rgba(100,70,40,.1);
+  color: #4b3827;
+}
+
+.ah-study-center {
+  text-align: center;
+  color: #766552;
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------
+   Note
+   --------------------------------------------------------- */
+
+.ah-study-textarea {
+  width: 100%;
+  min-height: 140px;
+
+  resize: vertical;
+
+  border: 1px solid rgba(100,70,40,.18);
+
+  border-radius: 14px;
+
+  padding: 14px;
+
+  background: #fffdf9;
+
+  color: #30251c;
+
+  font: inherit;
+
+  outline: none;
+
+  margin-bottom: 10px;
+}
+
+.ah-study-textarea:focus,
+.ah-study-search:focus,
+.ah-study-inline-form input:focus {
+  border-color: #a66d36;
+
+  box-shadow:
+    0 0 0 3px rgba(166,109,54,.12);
+}
+
+.ah-study-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 9px;
+
+  margin-top: 15px;
+}
+
+.ah-study-note {
+  padding: 14px;
+
+  border-radius: 14px;
+
+  background: #fffaf3;
+
+  border: 1px solid rgba(100,70,40,.12);
+}
+
+.ah-study-note small {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #887461;
+
+  font-size: 10px;
+}
+
+/* ---------------------------------------------------------
+   Preferiti
+   --------------------------------------------------------- */
+
+.ah-study-inline-form {
+  display: flex;
+
+  gap: 8px;
+}
+
+.ah-study-inline-form input {
+  flex: 1;
+
+  min-width: 0;
+
+  border: 1px solid rgba(100,70,40,.18);
+
+  border-radius: 12px;
+
+  padding: 12px;
+
+  background: #fffdf9;
+
+  outline: none;
+
+  font: inherit;
+}
+
+.ah-study-list-item {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 13px;
+
+  border-radius: 13px;
+
+  background: #fffaf3;
+
+  border: 1px solid rgba(100,70,40,.12);
+}
+
+.ah-study-list-item span {
+  flex: 1;
+}
+
+.ah-study-list-item button {
+  border: 0;
+
+  border-radius: 9px;
+
+  padding: 7px 9px;
+
+  background: rgba(150,60,40,.1);
+
+  color: #93402e;
+
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------
+   Timer
+   --------------------------------------------------------- */
+
+.ah-study-timer {
+  margin: 20px 0;
+
+  text-align: center;
+
+  font-size: 64px;
+
+  font-weight: 800;
+
+  letter-spacing: -.04em;
+
+  color: #71471f;
+}
+
+/* ---------------------------------------------------------
+   Quiz
+   --------------------------------------------------------- */
+
+.ah-study-progress {
+  text-align: center;
+
+  margin-bottom: 15px;
+
+  color: #876c53;
+
+  font-size: 12px;
+}
+
+.ah-study-question {
+  padding: 20px;
+
+  margin-bottom: 14px;
+
+  border-radius: 17px;
+
+  background: #fffaf3;
+
+  border: 1px solid rgba(100,70,40,.12);
+
+  font-size: 18px;
+
+  font-weight: 700;
+
+  line-height: 1.4;
+}
+
+.ah-study-options {
+  display: flex;
+  flex-direction: column;
+
+  gap: 9px;
+}
+
+.ah-study-options button {
+  border: 1px solid rgba(100,70,40,.15);
+
+  border-radius: 13px;
+
+  padding: 14px;
+
+  background: #fffdf9;
+
+  color: #36291e;
+
+  text-align: left;
+
+  font: inherit;
+
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------
+   Flashcard
+   --------------------------------------------------------- */
+
+.ah-study-flash {
+  min-height: 260px;
+
+  margin-bottom: 15px;
+
+  border-radius: 22px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #ead8bd,
+      #fff9ee
+    );
+
+  border: 1px solid rgba(100,70,40,.14);
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 30px;
+
+  text-align: center;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 22px rgba(60,40,20,.1);
+}
+
+.ah-study-flash-label {
+  margin-bottom: 18px;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: .15em;
+
+  color: #98704a;
+}
+
+.ah-study-flash strong {
+  font-size: 26px;
+  line-height: 1.3;
+}
+
+.ah-study-flash small {
+  margin-top: 20px;
+
+  color: #826d58;
+}
+
+/* ---------------------------------------------------------
+   Risultato
+   --------------------------------------------------------- */
+
+.ah-study-result {
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 25px;
+
+  margin-bottom: 15px;
+
+  border-radius: 20px;
+
+  background: #fffaf3;
+}
+
+.ah-study-result strong {
+  font-size: 56px;
+
+  color: #7c5127;
+}
+
+.ah-study-result span {
+  text-align: center;
+
+  color: #725f4d;
+}
+
+/* ---------------------------------------------------------
+   Esame
+   --------------------------------------------------------- */
+
+.ah-study-exam-intro {
+  text-align: center;
+
+  padding: 10px;
+}
+
+.ah-study-exam-icon {
+  font-size: 55px;
+}
+
+.ah-study-exam-intro h3 {
+  font-size: 23px;
+
+  margin: 8px 0;
+}
+
+.ah-study-exam-intro p {
+  color: #756250;
+
+  line-height: 1.5;
+}
+
+.ah-study-exam-intro ul {
+  text-align: left;
+
+  margin: 20px 0;
+
+  padding-left: 24px;
+
+  line-height: 1.9;
+
+  color: #655342;
+}
+
+/* ---------------------------------------------------------
+   Progressi
+   --------------------------------------------------------- */
+
+.ah-study-progress-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0,1fr));
+
+  gap: 10px;
+}
+
+.ah-study-progress-box {
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+
+  padding: 16px;
+
+  border-radius: 15px;
+
+  background: #fffaf3;
+
+  border: 1px solid rgba(100,70,40,.12);
+}
+
+.ah-study-progress-box span {
+  font-size: 22px;
+}
+
+.ah-study-progress-box small {
+  color: #7d6a56;
+}
+
+.ah-study-progress-box strong {
+  font-size: 22px;
+}
+
+.ah-study-progress-bar {
+  height: 9px;
+
+  margin-top: 20px;
+
+  border-radius: 99px;
+
+  overflow: hidden;
+
+  background: rgba(100,70,40,.1);
+}
+
+.ah-study-progress-bar span {
+  display: block;
+
+  height: 100%;
+
+  border-radius: inherit;
+
+  background: #8b5a2b;
+}
+
+/* ---------------------------------------------------------
+   Ricerca
+   --------------------------------------------------------- */
+
+.ah-study-search {
+  width: 100%;
+
+  border: 1px solid rgba(100,70,40,.18);
+
+  border-radius: 14px;
+
+  padding: 14px;
+
+  background: #fffdf9;
+
+  color: #30251c;
+
+  font: inherit;
+
+  outline: none;
+}
+
+.ah-study-search-results {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+
+  margin-top: 15px;
+}
+
+.ah-study-result {
+  width: 100%;
+
+  border: 1px solid rgba(100,70,40,.12);
+
+  border-radius: 13px;
+
+  padding: 13px;
+
+  background: #fffaf3;
+
+  color: #3a2c20;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------
+   Empty
+   --------------------------------------------------------- */
+
+.ah-study-empty {
+  padding: 25px 15px;
+
+  text-align: center;
+
+  color: #8a7763;
+}
+
+/* ---------------------------------------------------------
+   Suggerimento
+   --------------------------------------------------------- */
+
+.ah-study-tip {
+  margin-top: 18px;
+
+  padding: 13px;
+
+  border-left: 3px solid #9a6a38;
+
+  background: rgba(154,106,56,.07);
+
+  color: #76614c;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------
+   Responsive
+   --------------------------------------------------------- */
+
+@media (min-width: 700px) {
+  .ah-study-overlay {
+    align-items: center;
+    padding: 30px;
+  }
+
+  .ah-study-panel {
+    border-radius: 24px;
+
+    max-height: 85vh;
+  }
+}
+
+@media (max-width: 420px) {
+  .ah-study-body {
+    padding: 15px;
+  }
+
+  .ah-study-head {
+    padding: 16px;
+  }
+
+  .ah-study-head h2 {
+    font-size: 21px;
+  }
+
+  .ah-study-timer {
+    font-size: 52px;
+  }
+
+  .ah-study-launch {
+    right: 12px;
+    bottom: 12px;
+  }
 }
