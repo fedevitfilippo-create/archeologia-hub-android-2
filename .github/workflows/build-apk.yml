@@ -11,139 +11,191 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build APK
+    name: Build Archeologia Hub
     runs-on: ubuntu-latest
 
     steps:
 
-      # ==========================================
-      # 1. CHECKOUT REPOSITORY
-      # ==========================================
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ==========================================
-      # 2. JAVA 17
-      # ==========================================
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # ==========================================
-      # 3. GRADLE 8.7
-      # ==========================================
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
-      # ==========================================
-      # 4. TROVA ZIP
-      # ==========================================
-      - name: Trova progetto
+      # ------------------------------------------
+      # ESTRAZIONE V22
+      # ------------------------------------------
+      - name: Estrai progetto V22
         shell: bash
         run: |
           set -e
-
-          echo "File nella repository:"
-          ls -lah
 
           ZIP="Archeologia_Hub_V22_PREMIUM_UI.zip"
 
           if [ ! -f "$ZIP" ]; then
-            echo ""
-            echo "ERRORE: ZIP non trovato:"
-            echo "$ZIP"
-            echo ""
-            echo "ZIP disponibili:"
-            find . -maxdepth 1 -type f -name "*.zip" -printf '%f\n'
+            echo "ERRORE: $ZIP non trovato."
             exit 1
           fi
 
-          echo ""
-          echo "ZIP trovato:"
-          ls -lh "$ZIP"
-
-      # ==========================================
-      # 5. ESTRAZIONE
-      # ==========================================
-      - name: Estrai progetto Android
-        shell: bash
-        run: |
-          set -e
-
           rm -rf ArcheologiaHubAndroid
 
-          unzip -q -o \
-            Archeologia_Hub_V22_PREMIUM_UI.zip
+          unzip -q -o "$ZIP"
 
-          echo ""
           echo "Progetto estratto."
 
-          find ArcheologiaHubAndroid -maxdepth 5 -type f | sort
-
-      # ==========================================
-      # 6. CONTROLLO STRUTTURA
-      # ==========================================
+      # ------------------------------------------
+      # CONTROLLA PROGETTO
+      # ------------------------------------------
       - name: Controlla progetto
         shell: bash
         run: |
           set -e
 
-          echo "Controllo file fondamentali..."
-
           test -f ArcheologiaHubAndroid/settings.gradle
-          test -f ArcheologiaHubAndroid/build.gradle
           test -f ArcheologiaHubAndroid/app/build.gradle
           test -f ArcheologiaHubAndroid/app/src/main/AndroidManifest.xml
           test -f ArcheologiaHubAndroid/app/src/main/java/it/archeologia/hub/MainActivity.java
 
-          echo ""
-          echo "Struttura progetto OK."
+          echo "Struttura Android OK."
 
-      # ==========================================
-      # 7. MOSTRA CONFIGURAZIONE
-      # ==========================================
-      - name: Controlla configurazione Android
-        working-directory: ArcheologiaHubAndroid
+      # ------------------------------------------
+      # INSTALLA LE FUNZIONI STUDY
+      # ------------------------------------------
+      - name: Installa Study Engine
         shell: bash
         run: |
           set -e
 
+          ASSETS="ArcheologiaHubAndroid/app/src/main/assets"
+
+          if [ ! -d "$ASSETS" ]; then
+            echo "ERRORE: cartella assets non trovata."
+            exit 1
+          fi
+
+          if [ ! -f "features/study.js" ]; then
+            echo "ERRORE: features/study.js non trovato."
+            exit 1
+          fi
+
+          if [ ! -f "features/study.css" ]; then
+            echo "ERRORE: features/study.css non trovato."
+            exit 1
+          fi
+
+          cp features/study.js "$ASSETS/study.js"
+          cp features/study.css "$ASSETS/study.css"
+
+          echo "Study Engine copiato negli assets."
+
+      # ------------------------------------------
+      # COLLEGA STUDY ENGINE ALL'HTML
+      # ------------------------------------------
+      - name: Integra Study Engine
+        shell: bash
+        run: |
+          set -e
+
+          HTML="ArcheologiaHubAndroid/app/src/main/assets/index.html"
+
+          if [ ! -f "$HTML" ]; then
+            echo "ERRORE: index.html non trovato."
+            exit 1
+          fi
+
+          # Inserisce CSS prima di </head>
+          python3 <<'PY'
+          from pathlib import Path
+
+          html_path = Path(
+              "ArcheologiaHubAndroid/app/src/main/assets/index.html"
+          )
+
+          html = html_path.read_text(
+              encoding="utf-8",
+              errors="ignore"
+          )
+
+          css = '<link rel="stylesheet" href="study.css">'
+
+          js = '<script src="study.js"></script>'
+
+          if "study.css" not in html:
+              if "</head>" in html:
+                  html = html.replace(
+                      "</head>",
+                      css + "\n</head>",
+                      1
+                  )
+              else:
+                  html = css + "\n" + html
+
+          if "study.js" not in html:
+              if "</body>" in html:
+                  html = html.replace(
+                      "</body>",
+                      js + "\n</body>",
+                      1
+                  )
+              else:
+                  html += "\n" + js
+
+          html_path.write_text(
+              html,
+              encoding="utf-8"
+          )
+
+          print("Study Engine integrato.")
+          PY
+
+      # ------------------------------------------
+      # CONTROLLO INTEGRAZIONE
+      # ------------------------------------------
+      - name: Verifica integrazione
+        shell: bash
+        run: |
+          set -e
+
+          HTML="ArcheologiaHubAndroid/app/src/main/assets/index.html"
+          ASSETS="ArcheologiaHubAndroid/app/src/main/assets"
+
+          test -f "$ASSETS/study.js"
+          test -f "$ASSETS/study.css"
+
+          grep -q "study.css" "$HTML"
+          grep -q "study.js" "$HTML"
+
           echo "======================================"
-          echo "ANDROID CONFIG"
+          echo "STUDY ENGINE INTEGRATO CORRETTAMENTE"
           echo "======================================"
 
-          grep -nE \
-            "applicationId|versionCode|versionName|minSdk|targetSdk|compileSdk" \
-            app/build.gradle || true
-
-      # ==========================================
-      # 8. GRADLE TASKS
-      # ==========================================
+      # ------------------------------------------
+      # GRADLE
+      # ------------------------------------------
       - name: Verifica Gradle
         working-directory: ArcheologiaHubAndroid
-        shell: bash
         run: |
           set -e
 
           gradle --version
 
-          echo ""
-          echo "Verifico il progetto..."
-
           gradle tasks \
             --no-daemon \
             --stacktrace
 
-      # ==========================================
-      # 9. CLEAN
-      # ==========================================
+      # ------------------------------------------
+      # CLEAN
+      # ------------------------------------------
       - name: Clean
         working-directory: ArcheologiaHubAndroid
-        shell: bash
         run: |
           set -e
 
@@ -151,26 +203,21 @@ jobs:
             --no-daemon \
             --stacktrace
 
-      # ==========================================
-      # 10. BUILD APK
-      # ==========================================
+      # ------------------------------------------
+      # BUILD
+      # ------------------------------------------
       - name: Compila APK
         working-directory: ArcheologiaHubAndroid
-        shell: bash
         run: |
           set -e
-
-          echo "======================================"
-          echo "COMPILAZIONE APK"
-          echo "======================================"
 
           gradle assembleDebug \
             --no-daemon \
             --stacktrace
 
-      # ==========================================
-      # 11. TROVA APK
-      # ==========================================
+      # ------------------------------------------
+      # VERIFICA APK
+      # ------------------------------------------
       - name: Verifica APK
         shell: bash
         run: |
@@ -179,44 +226,36 @@ jobs:
           APK="ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo ""
             echo "ERRORE: APK non generato."
-            echo ""
-            echo "File generati:"
-            find ArcheologiaHubAndroid/app/build \
-              -type f \
-              | sort || true
-
             exit 1
           fi
 
-          echo ""
           echo "======================================"
           echo "APK GENERATO"
           echo "======================================"
 
           ls -lh "$APK"
 
-      # ==========================================
-      # 12. UPLOAD APK
-      # ==========================================
+      # ------------------------------------------
+      # UPLOAD
+      # ------------------------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Archeologia-Hub-APK
+          name: Archeologia-Hub-APK-Study
           path: ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
 
-      # ==========================================
-      # 13. FINE
-      # ==========================================
-      - name: Fine
+      # ------------------------------------------
+      # FINE
+      # ------------------------------------------
+      - name: Build completata
         run: |
           echo ""
           echo "======================================"
-          echo " ARCHEOLOGIA HUB"
-          echo " BUILD COMPLETATA"
+          echo " ARCHEOLOGIA HUB — BUILD COMPLETATA"
           echo "======================================"
           echo ""
-          echo "Artifact: Archeologia-Hub-APK"
+          echo "Artifact:"
+          echo "Archeologia-Hub-APK-Study"
