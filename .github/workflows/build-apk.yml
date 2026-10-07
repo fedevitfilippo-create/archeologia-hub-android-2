@@ -1372,7 +1372,7 @@ jobs:
             window.closeArcheologiaStudio;
 
 
-         })();
+          })();
 
           EOF
 
