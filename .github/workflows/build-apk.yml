@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -65,7 +66,6 @@ jobs:
 
           python3 <<'PY'
           from pathlib import Path
-          import re
 
           path = Path(
               "ArcheologiaHubAndroid/app/src/main/assets/index.html"
@@ -92,23 +92,34 @@ jobs:
                   "ERRORE: fine v14RenderStudy non trovata."
               )
 
-          new_function = r'''function v14RenderStudy(){
+          new_function = """
+          function v14RenderStudy(){
             const sec=document.getElementById('study');
+
             if(!sec)return;
 
             const old=sec.querySelector('.v14-study-landing');
+
             if(old)old.remove();
 
             const wrap=document.createElement('div');
+
             wrap.className='v14-study-landing';
 
-            const courses=(db&&Array.isArray(db.exams))
+            const courses =
+              (typeof db !== 'undefined' &&
+               db &&
+               Array.isArray(db.exams))
               ? db.exams
               : [];
 
-            wrap.innerHTML=`
+            wrap.innerHTML = `
               <div class="v14-study-landing-hero">
-                <span class="v14-overline" style="color:#e4c99d">
+
+                <span
+                  class="v14-overline"
+                  style="color:#e4c99d"
+                >
                   AREA STUDIO
                 </span>
 
@@ -118,158 +129,223 @@ jobs:
                   Il tuo spazio universitario per appunti,
                   materiali, audio, riassunti e ripasso.
                 </p>
+
               </div>
 
               <div class="v14-study-tools">
-                <button type="button" onclick="v13OpenSelected('hubNotes')">
+
+                <button
+                  type="button"
+                  onclick="v13OpenSelected('hubNotes')"
+                >
                   <b>📝 Appunti</b>
                   <small>Scrivi e organizza</small>
                 </button>
 
-                <button type="button" onclick="v13OpenSelected('hubAudio')">
+                <button
+                  type="button"
+                  onclick="v13OpenSelected('hubAudio')"
+                >
                   <b>🎧 Audio</b>
                   <small>Ascolta le lezioni</small>
                 </button>
 
-                <button type="button" onclick="v13OpenSelected('hubSummaries')">
+                <button
+                  type="button"
+                  onclick="v13OpenSelected('hubSummaries')"
+                >
                   <b>▤ Riassunti</b>
                   <small>Ripassa</small>
                 </button>
 
-                <button type="button" onclick="v13OpenSelected('hubSchemes')">
+                <button
+                  type="button"
+                  onclick="v13OpenSelected('hubSchemes')"
+                >
                   <b>⌘ Schemi</b>
                   <small>Collega concetti</small>
                 </button>
 
-                <button type="button" onclick="v13OpenSelected('hubMaterials')">
+                <button
+                  type="button"
+                  onclick="v13OpenSelected('hubMaterials')"
+                >
                   <b>📂 Materiali</b>
                   <small>Documenti e file</small>
                 </button>
 
-                <button type="button" onclick="v13OpenSelected('hubPhotos')">
+                <button
+                  type="button"
+                  onclick="v13OpenSelected('hubPhotos')"
+                >
                   <b>📷 Foto</b>
                   <small>Immagini dello studio</small>
                 </button>
 
-                <button type="button" onclick="v13OpenSelected('hubReadListen')">
+                <button
+                  type="button"
+                  onclick="v13OpenSelected('hubReadListen')"
+                >
                   <b>📖 Leggi</b>
                   <small>Leggi e ascolta</small>
                 </button>
 
-                <button type="button" onclick="go('stats')">
+                <button
+                  type="button"
+                  onclick="go('stats')"
+                >
                   <b>📊 Progressi</b>
                   <small>Controlla lo studio</small>
                 </button>
+
               </div>
 
               <div class="v15-study-personal">
 
                 <div class="v14-section-head">
+
                   <div>
+
                     <span class="v14-overline">
                       ORGANIZZAZIONE
                     </span>
 
                     <h3>Il tuo studio</h3>
+
                   </div>
+
                 </div>
 
                 <div class="v15-personal-grid">
 
-                  <button type="button" onclick="addItem('notes')">
+                  <button
+                    type="button"
+                    onclick="addItem('notes')"
+                  >
                     <b>✎ Nuovo appunto</b>
+
                     <small>
                       Annota una lezione o un concetto
                     </small>
                   </button>
 
-                  <button type="button" onclick="addItem('sessions')">
+                  <button
+                    type="button"
+                    onclick="addItem('sessions')"
+                  >
                     <b>◷ Sessione</b>
+
                     <small>
                       Registra il tempo di studio
                     </small>
                   </button>
 
-                  <button type="button" onclick="addItem('tasks')">
+                  <button
+                    type="button"
+                    onclick="addItem('tasks')"
+                  >
                     <b>✓ Attività</b>
+
                     <small>
                       Organizza ciò che devi fare
                     </small>
                   </button>
 
                 </div>
+
               </div>
 
-              <div class="v14-section" style="margin-top:14px">
+              <div
+                class="v14-section"
+                style="margin-top:14px"
+              >
 
                 <div class="v14-section-head">
+
                   <div>
+
                     <span class="v14-overline">
                       CORSI
                     </span>
 
-                    <h3>Cartelle degli insegnamenti</h3>
+                    <h3>
+                      Cartelle degli insegnamenti
+                    </h3>
+
                   </div>
+
                 </div>
 
                 <div class="v14-study-exams">
 
                   ${
                     courses.length
-                    ? courses.map(x=>`
+                    ? courses.map(x => `
+
                       <button
                         type="button"
                         class="v14-study-exam"
                         onclick="hubOpenExam(${Number(x.id)})"
                       >
+
                         <span>📚</span>
 
                         <div>
-                          <b>${esc(x.name)}</b>
+
+                          <b>
+                            ${typeof esc === 'function'
+                              ? esc(x.name)
+                              : x.name}
+                          </b>
 
                           <small>
-                            ${x.cfu ? x.cfu+' CFU' : 'Idoneità'}
+                            ${
+                              x.cfu
+                              ? x.cfu + ' CFU'
+                              : 'Idoneità'
+                            }
                             · Apri cartella di studio
                           </small>
+
                         </div>
 
                         <span>›</span>
+
                       </button>
+
                     `).join('')
+
                     : `
+
                       <div class="v15-empty">
                         Nessun insegnamento disponibile.
                       </div>
+
                     `
                   }
 
                 </div>
+
               </div>
             `;
 
             sec.prepend(wrap);
           }
+          """
 
-          const startMarker = "function v14RenderStudy(){";
-          const endMarker = "const v14OldRender=render;";
-
-          const start = html.find(startMarker);
-          const end = html.find(endMarker, start);
-
-          const replacement =
-              newFunction + "\n";
-
-          html =
-              html.slice(0, start) +
-              replacement +
-              html.slice(end);
+          html = (
+              html[:start]
+              + new_function
+              + "\n"
+              + html[end:]
+          )
 
           path.write_text(
               html,
               encoding="utf-8"
-          );
+          )
 
-          print("Area Studio V27 integrata.");
+          print("Area Studio V27 integrata correttamente.")
           PY
 
       - name: Controllo JavaScript
@@ -279,7 +355,6 @@ jobs:
 
           python3 <<'PY'
           from pathlib import Path
-          import re
 
           path = Path(
               "ArcheologiaHubAndroid/app/src/main/assets/index.html"
@@ -305,7 +380,7 @@ jobs:
                   "ERRORE: sezione corsi non presente."
               )
 
-          print("Patch Area Studio verificata.")
+          print("Controllo JavaScript OK.")
           PY
 
       - name: Verifica progetto finale
