@@ -1,4 +1,4 @@
-name: Build Archeologia Hub V30
+name: Build Archeologia Hub V31
 
 on:
   workflow_dispatch:
@@ -13,23 +13,23 @@ jobs:
 
   build:
 
-    name: Compila Archeologia Hub V30
+    name: Compila Archeologia Hub V31
 
     runs-on: ubuntu-latest
 
     steps:
 
-      # =====================================================
+      # =========================================================
       # CHECKOUT
-      # =====================================================
+      # =========================================================
 
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
 
-      # =====================================================
+      # =========================================================
       # JAVA
-      # =====================================================
+      # =========================================================
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -38,803 +38,473 @@ jobs:
           java-version: '17'
 
 
-      # =====================================================
+      # =========================================================
       # GRADLE
-      # =====================================================
+      # =========================================================
 
-      - name: Setup Gradle 8.7
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
 
-      # =====================================================
-      # ESTRAI PROGETTO V22
-      # =====================================================
+      # =========================================================
+      # TROVA ARCHIVIO
+      # =========================================================
 
-      - name: Estrai progetto Archeologia Hub
+      - name: Trova archivio Archeologia Hub
         shell: bash
         run: |
-
           set -e
 
           ZIP="Archeologia_Hub_V22_PREMIUM_UI.zip"
 
-          echo "======================================"
-          echo "CONTROLLO ARCHIVIO"
-          echo "======================================"
+          echo "Controllo archivio..."
 
           if [ ! -f "$ZIP" ]; then
-
-            echo "ERRORE: archivio non trovato:"
-            echo "$ZIP"
-
-            echo ""
+            echo "ERRORE: archivio non trovato."
             echo "File disponibili:"
             ls -lah
-
             exit 1
-
           fi
+
+          echo "Archivio trovato:"
+          ls -lh "$ZIP"
+
+
+      # =========================================================
+      # ESTRAZIONE
+      # =========================================================
+
+      - name: Estrai progetto Android
+        shell: bash
+        run: |
+          set -e
 
           rm -rf ArcheologiaHubAndroid
 
-          unzip -q -o "$ZIP"
+          unzip -q -o \
+            Archeologia_Hub_V22_PREMIUM_UI.zip
 
-          echo ""
-          echo "PROGETTO ESTRATTO"
+          test -d ArcheologiaHubAndroid
+
+          test -f \
+            ArcheologiaHubAndroid/app/build.gradle
+
+          test -f \
+            ArcheologiaHubAndroid/app/src/main/assets/index.html
+
+          echo "Progetto Android estratto correttamente."
 
 
-      # =====================================================
-      # CONTROLLO PROGETTO
-      # =====================================================
+      # =========================================================
+      # CENTRO STUDIO V31
+      # COMPLETAMENTE SEPARATO DAGLI ESAMI
+      # =========================================================
 
-      - name: Controlla progetto
+      - name: Crea Centro Studio V31
         shell: bash
         run: |
-
           set -e
 
-          test -f ArcheologiaHubAndroid/settings.gradle
-          test -f ArcheologiaHubAndroid/app/build.gradle
-          test -f ArcheologiaHubAndroid/app/src/main/AndroidManifest.xml
-          test -f ArcheologiaHubAndroid/app/src/main/java/it/archeologia/hub/MainActivity.java
-          test -f ArcheologiaHubAndroid/app/src/main/assets/index.html
+          HTML="ArcheologiaHubAndroid/app/src/main/assets/index.html"
 
-          echo ""
-          echo "======================================"
-          echo "PROGETTO VERIFICATO"
-          echo "======================================"
+          cp "$HTML" /tmp/index-original.html
 
+          mkdir -p /tmp/studio-v31
 
-      # =====================================================
-      # V29 — CORREZIONI ESISTENTI
-      # =====================================================
+          cat > /tmp/studio-v31/studio.css <<'CSS'
 
-      - name: Correzioni V29
-        shell: bash
-        run: |
+          /* =====================================================
+             ARCHEOLOGIA HUB V31
+             CENTRO STUDIO ISOLATO
+             ===================================================== */
 
-          set -e
+          #arch-studio-v31 {
 
-          python3 <<'PY'
+            position: fixed !important;
 
-          from pathlib import Path
-          import re
+            inset: 0 !important;
 
-          path = Path(
-              "ArcheologiaHubAndroid/app/src/main/assets/index.html"
-          )
+            width: 100vw !important;
+            height: 100vh !important;
 
-          html = path.read_text(
-              encoding="utf-8",
-              errors="ignore"
-          )
+            z-index: 2147483647 !important;
 
+            display: none;
 
-          # =================================================
-          # FIX NAVIGAZIONE ORIGINALE
-          # =================================================
+            overflow: hidden;
 
-          new_open_selected = """
-          function v13OpenSelected(page){
+            background: #efe5d5;
 
-            if(!page)return;
+            color: #2d241c;
 
-            try{
+            font-family: inherit;
 
-              if(typeof hubExamId==='undefined' || !hubExamId){
-
-                if(
-                  typeof db!=='undefined' &&
-                  db &&
-                  Array.isArray(db.exams) &&
-                  db.exams.length
-                ){
-
-                  hubExamId=Number(db.exams[0].id);
-
-                  localStorage.setItem(
-                    'archeologiaHub.activeExam',
-                    String(hubExamId)
-                  );
-
-                }
-
-              }
-
-              go(page);
-
-              if(typeof hubAfterPage==='function'){
-
-                setTimeout(function(){
-
-                  hubAfterPage(page);
-
-                },30);
-
-              }
-
-            }catch(error){
-
-              console.error(
-                'Errore apertura Area Studio:',
-                error
-              );
-
-            }
-
-          }
-          """.strip()
-
-
-          pattern = re.compile(
-              r"function\s+v13OpenSelected\s*\(\s*page\s*\)\s*\{.*?\n\}",
-              re.S
-          )
-
-          match = pattern.search(html)
-
-
-          if match:
-
-              html = (
-                  html[:match.start()]
-                  + new_open_selected
-                  + html[match.end():]
-              )
-
-              print(
-                  "FIX v13OpenSelected: OK"
-              )
-
-          else:
-
-              print(
-                  "v13OpenSelected non trovata."
-              )
-
-
-          # =================================================
-          # FIX HIDDEN
-          # =================================================
-
-          hidden_fix = """
-
-          /* V29 FIX — hidden ebook panels */
-
-          .v15-ebook-shell [hidden],
-          .v15-ebook-shell[hidden],
-          .v15-ebook-library[hidden],
-          .v15-ebook-reader[hidden],
-          .v15-ebook-editor[hidden]{
-
-            display:none!important;
-            visibility:hidden!important;
-            pointer-events:none!important;
+            isolation: isolate;
 
           }
 
-          [hidden]{
 
-            display:none!important;
+          #arch-studio-v31.arch-studio-open {
 
-          }
-
-          """
-
-
-          if "V29 FIX — hidden ebook panels" not in html:
-
-              pos = html.lower().rfind("</style>")
-
-              if pos >= 0:
-
-                  html = (
-                      html[:pos]
-                      + hidden_fix
-                      + "\n"
-                      + html[pos:]
-                  )
-
-              else:
-
-                  pos = html.lower().find("</head>")
-
-                  if pos >= 0:
-
-                      html = (
-                          html[:pos]
-                          + "<style>"
-                          + hidden_fix
-                          + "</style>"
-                          + "\n"
-                          + html[pos:]
-                      )
-
-                  else:
-
-                      raise SystemExit(
-                          "Impossibile inserire CSS V29."
-                      )
-
-
-          # =================================================
-          # FIX PULSANTI EBOOK
-          # =================================================
-
-          button_fix = """
-
-          /* V29 — ebook controls always clickable */
-
-          .v15-ebook-shell button{
-
-            position:relative;
-            z-index:5;
-            pointer-events:auto;
-            touch-action:manipulation;
-
-          }
-
-          .v15-ebook-shell input,
-          .v15-ebook-shell textarea{
-
-            pointer-events:auto;
-            touch-action:auto;
-
-          }
-
-          """
-
-
-          if "V29 — ebook controls always clickable" not in html:
-
-              pos = html.lower().rfind("</style>")
-
-              if pos >= 0:
-
-                  html = (
-                      html[:pos]
-                      + button_fix
-                      + "\n"
-                      + html[pos:]
-                  )
-
-
-          path.write_text(
-              html,
-              encoding="utf-8"
-          )
-
-          print("")
-          print("======================================")
-          print("FIX V29 APPLICATI")
-          print("======================================")
-
-          PY
-
-
-      # =====================================================
-      # V30 — CENTRO STUDIO COMPLETAMENTE SEPARATO
-      # DAGLI ESAMI
-      # =====================================================
-
-      - name: Crea Centro Studio V30 indipendente
-        shell: bash
-        run: |
-
-          set -e
-
-          python3 <<'PY'
-
-          from pathlib import Path
-
-          path = Path(
-              "ArcheologiaHubAndroid/app/src/main/assets/index.html"
-          )
-
-          html = path.read_text(
-              encoding="utf-8",
-              errors="ignore"
-          )
-
-
-          # =================================================
-          # CSS CENTRO STUDIO
-          # =================================================
-
-          css = r"""
-
-          /* =================================================
-             ARCHEOLOGIA HUB V30
-             CENTRO STUDIO COMPLETAMENTE ISOLATO
-             DAGLI ESAMI
-             ================================================= */
-
-
-          #ah-studio-v30{
-
-            position:fixed !important;
-
-            inset:0 !important;
-
-            z-index:2147483000 !important;
-
-            display:none;
-
-            width:100%;
-            height:100%;
-
-            background:#efe7da;
-
-            color:#2d241d;
-
-            font-family:inherit;
-
-            overflow:hidden;
+            display: block !important;
 
           }
 
 
-          #ah-studio-v30.is-open{
+          #arch-studio-v31 * {
 
-            display:block !important;
-
-          }
-
-
-          #ah-studio-v30,
-          #ah-studio-v30 *{
-
-            box-sizing:border-box;
+            box-sizing: border-box;
 
           }
 
 
-          /* ================================================
-             HEADER
-             ================================================ */
+          #arch-studio-v31 button {
 
-          #ah-studio-v30 .ah-v30-top{
+            font-family: inherit;
 
-            height:72px;
+            touch-action: manipulation;
 
-            display:flex;
+            -webkit-tap-highlight-color: transparent;
 
-            align-items:center;
+          }
 
-            gap:12px;
 
-            padding:12px 15px;
+          #arch-studio-v31 .studio-header {
+
+            height: 72px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+
+            padding: 10px 14px;
 
             background:
               linear-gradient(
                 135deg,
-                #35251b,
-                #704a2b
+                #34251b,
+                #714b2c
               );
 
-            color:#fff;
-
-            box-shadow:
-              0 3px 18px rgba(0,0,0,.25);
+            color: white;
 
           }
 
 
-          #ah-studio-v30 .ah-v30-back{
+          #arch-studio-v31 .studio-back {
 
-            width:44px;
+            width: 46px;
+            height: 46px;
 
-            height:44px;
+            border: 0;
 
-            flex:none;
+            border-radius: 50%;
 
-            border:0;
+            background: rgba(255,255,255,.16);
 
-            border-radius:50%;
+            color: white;
 
-            background:
-              rgba(255,255,255,.14);
+            font-size: 25px;
 
-            color:#fff;
-
-            font-size:27px;
-
-            cursor:pointer;
-
-            touch-action:manipulation;
+            cursor: pointer;
 
           }
 
 
-          #ah-studio-v30 .ah-v30-brand{
+          #arch-studio-v31 .studio-title {
 
-            flex:1;
+            flex: 1;
 
-            min-width:0;
-
-          }
-
-
-          #ah-studio-v30 .ah-v30-kicker{
-
-            display:block;
-
-            font-size:9px;
-
-            font-weight:800;
-
-            letter-spacing:.16em;
-
-            opacity:.72;
+            min-width: 0;
 
           }
 
 
-          #ah-studio-v30 .ah-v30-title{
+          #arch-studio-v31 .studio-title small {
 
-            margin-top:3px;
+            display: block;
 
-            font-size:21px;
+            font-size: 9px;
 
-            font-weight:900;
+            letter-spacing: .15em;
 
-          }
+            opacity: .7;
 
-
-          #ah-studio-v30 .ah-v30-separator{
-
-            flex:none;
-
-            padding:8px 10px;
-
-            border-radius:999px;
-
-            background:#d49a59;
-
-            color:#2e2118;
-
-            font-size:9px;
-
-            font-weight:900;
-
-            letter-spacing:.07em;
-
-            white-space:nowrap;
+            font-weight: 800;
 
           }
 
 
-          /* ================================================
-             BODY
-             ================================================ */
+          #arch-studio-v31 .studio-title strong {
 
-          #ah-studio-v30 .ah-v30-body{
+            display: block;
 
-            height:
-              calc(100% - 72px);
+            margin-top: 3px;
 
-            overflow-y:auto;
-
-            padding:16px;
-
-            -webkit-overflow-scrolling:touch;
+            font-size: 20px;
 
           }
 
 
-          /* ================================================
-             HERO
-             ================================================ */
+          #arch-studio-v31 .studio-badge {
 
-          #ah-studio-v30 .ah-v30-hero{
+            padding: 8px 10px;
 
-            margin-bottom:15px;
+            border-radius: 999px;
 
-            padding:20px;
+            background: #d39a58;
 
-            border-radius:22px;
+            color: #2d2118;
+
+            font-size: 9px;
+
+            font-weight: 900;
+
+          }
+
+
+          #arch-studio-v31 .studio-body {
+
+            height: calc(100vh - 72px);
+
+            overflow-y: auto;
+
+            padding: 15px;
+
+            -webkit-overflow-scrolling: touch;
+
+          }
+
+
+          #arch-studio-v31 .studio-hero {
+
+            padding: 20px;
+
+            margin-bottom: 14px;
+
+            border-radius: 22px;
 
             background:
               linear-gradient(
                 145deg,
                 #fffaf2,
-                #e2ceb2
+                #dfc9a9
               );
 
-            border:
-              1px solid
-              rgba(80,50,25,.14);
-
-            box-shadow:
-              0 5px 18px
-              rgba(60,40,20,.06);
+            border: 1px solid rgba(70,45,25,.14);
 
           }
 
 
-          #ah-studio-v30 .ah-v30-hero h2{
+          #arch-studio-v31 .studio-hero h2 {
 
-            margin:0 0 7px;
+            margin: 0 0 7px;
 
-            font-size:27px;
-
-          }
-
-
-          #ah-studio-v30 .ah-v30-hero p{
-
-            margin:0;
-
-            color:#705b47;
-
-            line-height:1.5;
+            font-size: 27px;
 
           }
 
 
-          /* ================================================
-             GRIGLIA
-             ================================================ */
+          #arch-studio-v31 .studio-hero p {
 
-          #ah-studio-v30 .ah-v30-grid{
+            margin: 0;
 
-            display:grid;
+            line-height: 1.5;
+
+            color: #705a45;
+
+          }
+
+
+          #arch-studio-v31 .studio-grid {
+
+            display: grid;
 
             grid-template-columns:
               repeat(2,minmax(0,1fr));
 
-            gap:11px;
+            gap: 11px;
 
           }
 
 
-          #ah-studio-v30 .ah-v30-card{
+          #arch-studio-v31 .studio-card {
 
-            min-height:115px;
+            min-height: 120px;
 
-            border:
-              1px solid
-              rgba(80,50,25,.13);
+            padding: 16px;
 
-            border-radius:18px;
+            border: 1px solid rgba(70,45,25,.13);
 
-            background:#fffaf3;
+            border-radius: 18px;
 
-            color:#34291f;
+            background: #fffaf3;
 
-            padding:15px;
+            color: #30251c;
 
-            text-align:left;
+            text-align: left;
 
-            cursor:pointer;
-
-            touch-action:manipulation;
+            cursor: pointer;
 
             box-shadow:
-              0 4px 14px
-              rgba(60,40,20,.06);
+              0 4px 14px rgba(60,40,20,.06);
 
           }
 
 
-          #ah-studio-v30 .ah-v30-card:active{
+          #arch-studio-v31 .studio-card:active {
 
-            transform:scale(.98);
-
-          }
-
-
-          #ah-studio-v30 .ah-v30-card span{
-
-            font-size:26px;
+            transform: scale(.98);
 
           }
 
 
-          #ah-studio-v30 .ah-v30-card b{
+          #arch-studio-v31 .studio-icon {
 
-            display:block;
+            display: block;
 
-            margin-top:9px;
-
-            font-size:15px;
+            font-size: 28px;
 
           }
 
 
-          /* ================================================
-             PANNELLI
-             ================================================ */
+          #arch-studio-v31 .studio-card strong {
 
-          #ah-studio-v30 .ah-v30-panel{
+            display: block;
 
-            display:none;
+            margin-top: 9px;
 
-            margin-top:15px;
-
-            padding:18px;
-
-            border-radius:19px;
-
-            background:#fffaf3;
-
-            border:
-              1px solid
-              rgba(80,50,25,.13);
+            font-size: 15px;
 
           }
 
 
-          #ah-studio-v30
-          .ah-v30-panel.is-active{
+          #arch-studio-v31 .studio-card span {
 
-            display:block;
+            display: block;
 
-          }
+            margin-top: 4px;
 
+            color: #806d59;
 
-          #ah-studio-v30
-          .ah-v30-panel h3{
-
-            margin:0 0 14px;
-
-            font-size:21px;
+            font-size: 12px;
 
           }
 
 
-          /* ================================================
-             PULSANTI
-             ================================================ */
+          #arch-studio-v31 .studio-panel {
 
-          #ah-studio-v30 button{
+            display: none;
 
-            font-family:inherit;
+            margin-top: 14px;
 
-            touch-action:manipulation;
+            padding: 18px;
 
-          }
+            border-radius: 18px;
 
+            background: #fffaf3;
 
-          #ah-studio-v30
-          .ah-v30-panel button{
-
-            border:0;
-
-            border-radius:12px;
-
-            padding:12px 15px;
-
-            background:#8b5a2b;
-
-            color:#fff;
-
-            font-weight:700;
-
-            cursor:pointer;
+            border: 1px solid rgba(70,45,25,.13);
 
           }
 
 
-          #ah-studio-v30
-          .ah-v30-options{
+          #arch-studio-v31 .studio-panel.active {
 
-            display:flex;
-
-            flex-direction:column;
-
-            gap:9px;
+            display: block;
 
           }
 
 
-          #ah-studio-v30
-          .ah-v30-options button{
+          #arch-studio-v31 .studio-panel h3 {
 
-            width:100%;
+            margin: 0 0 14px;
 
-            text-align:left;
-
-            background:#f7efe3;
-
-            color:#35291f;
-
-            border:
-              1px solid
-              rgba(80,50,25,.13);
+            font-size: 21px;
 
           }
 
 
-          /* ================================================
-             INPUT
-             ================================================ */
+          #arch-studio-v31 .studio-button {
 
-          #ah-studio-v30
-          .ah-v30-input,
+            width: 100%;
 
-          #ah-studio-v30
-          .ah-v30-textarea{
+            min-height: 46px;
 
-            width:100%;
+            margin-top: 9px;
 
-            border:
-              1px solid
-              rgba(80,50,25,.18);
+            padding: 12px;
 
-            border-radius:12px;
+            border: 0;
 
-            padding:12px;
+            border-radius: 12px;
 
-            background:#fff;
+            background: #87572b;
 
-            color:#2d241d;
+            color: white;
 
-            font:inherit;
+            font-weight: 800;
 
-            margin-bottom:10px;
-
-            outline:none;
+            cursor: pointer;
 
           }
 
 
-          /* ================================================
-             QUIZ
-             ================================================ */
+          #arch-studio-v31 .studio-secondary {
 
-          #ah-studio-v30
-          .ah-v30-question{
+            background: #f1e4d1;
 
-            padding:16px;
+            color: #34291f;
 
-            border-radius:14px;
-
-            background:#f4eadc;
-
-            font-weight:700;
-
-            line-height:1.45;
-
-            margin-bottom:11px;
+            border: 1px solid rgba(70,45,25,.12);
 
           }
 
 
-          /* ================================================
-             FLASHCARD
-             ================================================ */
+          #arch-studio-v31 textarea {
 
-          #ah-studio-v30
-          .ah-v30-flash{
+            width: 100%;
 
-            min-height:220px;
+            min-height: 180px;
 
-            padding:25px;
+            padding: 13px;
 
-            border-radius:20px;
+            border-radius: 12px;
+
+            border: 1px solid rgba(70,45,25,.18);
+
+            background: white;
+
+            color: #2d241c;
+
+            font: inherit;
+
+            resize: vertical;
+
+          }
+
+
+          #arch-studio-v31 .flashcard {
+
+            min-height: 230px;
+
+            display: flex;
+
+            flex-direction: column;
+
+            justify-content: center;
+
+            align-items: center;
+
+            text-align: center;
+
+            padding: 25px;
+
+            border-radius: 20px;
 
             background:
               linear-gradient(
@@ -843,238 +513,1173 @@ jobs:
                 #fff9ee
               );
 
-            display:flex;
-
-            flex-direction:column;
-
-            justify-content:center;
-
-            align-items:center;
-
-            text-align:center;
-
-            cursor:pointer;
-
-            margin-bottom:12px;
+            cursor: pointer;
 
           }
 
 
-          #ah-studio-v30
-          .ah-v30-flash strong{
+          #arch-studio-v31 .flashcard strong {
 
-            font-size:27px;
+            font-size: 25px;
 
-            line-height:1.3;
-
-          }
-
-
-          #ah-studio-v30
-          .ah-v30-flash small{
-
-            margin-top:18px;
-
-            color:#806d58;
+            line-height: 1.35;
 
           }
 
 
-          /* ================================================
-             TIMER
-             ================================================ */
+          #arch-studio-v31 .flashcard small {
 
-          #ah-studio-v30
-          .ah-v30-timer{
+            margin-top: 18px;
 
-            text-align:center;
-
-            font-size:58px;
-
-            font-weight:900;
-
-            color:#71471f;
-
-            margin:15px 0 22px;
+            color: #806d59;
 
           }
 
 
-          /* ================================================
-             NOTE
-             ================================================ */
+          #arch-studio-v31 .quiz-question {
 
-          #ah-studio-v30
-          .ah-v30-note{
+            padding: 16px;
 
-            padding:12px;
+            border-radius: 14px;
 
-            border-radius:12px;
+            background: #f2e7d7;
 
-            background:#f7efe3;
+            line-height: 1.45;
 
-            margin-top:9px;
-
-            white-space:pre-wrap;
+            font-weight: 800;
 
           }
 
 
-          /* ================================================
-             PROGRESSI
-             ================================================ */
+          #arch-studio-v31 .quiz-option {
 
-          #ah-studio-v30
-          .ah-v30-stat{
+            width: 100%;
 
-            display:flex;
+            margin-top: 9px;
 
-            justify-content:space-between;
+            padding: 13px;
 
-            align-items:center;
+            border-radius: 12px;
 
-            padding:13px;
+            border: 1px solid rgba(70,45,25,.14);
 
-            margin-bottom:8px;
+            background: #f7eee1;
 
-            border-radius:12px;
+            color: #34291f;
 
-            background:#f7efe3;
+            text-align: left;
 
-          }
+            font-weight: 700;
 
-
-          #ah-studio-v30
-          .ah-v30-progress{
-
-            height:10px;
-
-            border-radius:99px;
-
-            overflow:hidden;
-
-            background:#e2d4c2;
-
-            margin-top:15px;
+            cursor: pointer;
 
           }
 
 
-          #ah-studio-v30
-          .ah-v30-progress span{
+          #arch-studio-v31 .timer {
 
-            display:block;
+            text-align: center;
 
-            height:100%;
+            font-size: 56px;
 
-            background:#8b5a2b;
+            font-weight: 900;
 
-          }
+            color: #71471f;
 
-
-          /* ================================================
-             AZIONI
-             ================================================ */
-
-          #ah-studio-v30
-          .ah-v30-actions{
-
-            display:flex;
-
-            gap:9px;
-
-            flex-wrap:wrap;
+            margin: 20px 0;
 
           }
 
 
-          @media(max-width:420px){
+          #arch-studio-v31 .stat {
 
-            #ah-studio-v30
-            .ah-v30-body{
+            display: flex;
 
-              padding:13px;
+            justify-content: space-between;
+
+            padding: 13px;
+
+            margin-top: 8px;
+
+            border-radius: 12px;
+
+            background: #f5eadb;
+
+          }
+
+
+          @media(max-width:420px) {
+
+            #arch-studio-v31 .studio-body {
+
+              padding: 12px;
 
             }
 
-            #ah-studio-v30
-            .ah-v30-title{
+            #arch-studio-v31 .studio-title strong {
 
-              font-size:19px;
-
-            }
-
-            #ah-studio-v30
-            .ah-v30-separator{
-
-              font-size:8px;
-
-              padding:7px 8px;
+              font-size: 18px;
 
             }
 
-            #ah-studio-v30
-            .ah-v30-card{
+            #arch-studio-v31 .studio-badge {
 
-              min-height:105px;
+              font-size: 8px;
+
+              padding: 7px 8px;
 
             }
 
           }
 
-          """
+          CSS
 
 
-          # =================================================
-          # JAVASCRIPT CENTRO STUDIO
-          # =================================================
+          cat > /tmp/studio-v31.js <<'JS'
 
-          js = r"""
+          /* =====================================================
+             ARCHEOLOGIA HUB V31
+             MOTORE CENTRO STUDIO
+             COMPLETAMENTE INDIPENDENTE DAGLI ESAMI
+             ===================================================== */
 
-          /* =================================================
-             ARCHEOLOGIA HUB V30
-
-             CENTRO STUDIO COMPLETAMENTE INDIPENDENTE
-
-             NON USA:
-
-             go()
-             hubExamId
-             v13OpenSelected()
-             pagina esami
-             router esami
-
-             ================================================= */
-
-
-          (function(){
+          (function () {
 
             "use strict";
 
 
+            var ROOT_ID = "arch-studio-v31";
+
             var state = {
 
-              notes:[],
+              flash: 0,
 
-              quizIndex:0,
+              flashBack: false,
 
-              quizScore:0,
+              quiz: 0,
 
-              flashIndex:0,
+              score: 0,
 
-              flashFlipped:false,
+              seconds: 1500,
 
-              timer:null,
-
-              seconds:1500,
-
-              studyMinutes:0,
-
-              quizBest:0
+              timer: null
 
             };
 
 
-            /* =================================================
-               CARICAMENTO DATI
-               =====
+            var FLASHCARDS = [
+
+              [
+                "Che cos'è la stratigrafia?",
+                "Lo studio della successione degli strati archeologici e dei rapporti tra le unità stratigrafiche."
+              ],
+
+              [
+                "Che cos'è una US?",
+                "Unità Stratigrafica: una singola evidenza stratigrafica riconoscibile e documentabile."
+              ],
+
+              [
+                "Che cos'è la tipologia?",
+                "Un metodo di classificazione degli oggetti sulla base di caratteristiche condivise."
+              ],
+
+              [
+                "Che cos'è la cultura materiale?",
+                "L'insieme degli oggetti e delle evidenze materiali prodotti, utilizzati e trasformati dalle società."
+              ]
+
+            ];
+
+
+            var QUIZ = [
+
+              {
+
+                q: "Quale disciplina studia la successione degli strati archeologici?",
+
+                a: [
+
+                  "Stratigrafia",
+
+                  "Numismatica",
+
+                  "Epigrafia",
+
+                  "Paleografia"
+
+                ],
+
+                correct: 0
+
+              },
+
+              {
+
+                q: "Che cosa indica la sigla US?",
+
+                a: [
+
+                  "Unità Stratigrafica",
+
+                  "Unità Storica",
+
+                  "Uso Sociale",
+
+                  "Unità Sito"
+
+                ],
+
+                correct: 0
+
+              },
+
+              {
+
+                q: "La tipologia serve principalmente a:",
+
+                a: [
+
+                  "Classificare oggetti",
+
+                  "Misurare monumenti",
+
+                  "Tradurre il latino",
+
+                  "Disegnare mappe"
+
+                ],
+
+                correct: 0
+
+              }
+
+            ];
+
+
+            function root() {
+
+              return document.getElementById(ROOT_ID);
+
+            }
+
+
+            function closePanels() {
+
+              var panels =
+                root().querySelectorAll(".studio-panel");
+
+              panels.forEach(function (p) {
+
+                p.classList.remove("active");
+
+              });
+
+            }
+
+
+            function openPanel(id) {
+
+              closePanels();
+
+              var p =
+                root().querySelector("#" + id);
+
+              if (p) {
+
+                p.classList.add("active");
+
+                p.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start"
+                });
+
+              }
+
+            }
+
+
+            function openStudio() {
+
+              var r = root();
+
+              if (!r) return;
+
+              r.classList.add("arch-studio-open");
+
+              closePanels();
+
+              window.scrollTo(0, 0);
+
+            }
+
+
+            function closeStudio() {
+
+              var r = root();
+
+              if (!r) return;
+
+              r.classList.remove("arch-studio-open");
+
+              stopTimer();
+
+            }
+
+
+            function renderFlashcard() {
+
+              var r = root();
+
+              var q =
+                r.querySelector("#studio-flash-question");
+
+              var a =
+                r.querySelector("#studio-flash-answer");
+
+              var item =
+                FLASHCARDS[state.flash];
+
+              q.textContent =
+                state.flashBack
+                  ? item[1]
+                  : item[0];
+
+              a.textContent =
+                state.flashBack
+                  ? "Tocca per vedere la domanda"
+                  : "Tocca per vedere la risposta";
+
+            }
+
+
+            function renderQuiz() {
+
+              var r = root();
+
+              var q =
+                r.querySelector("#studio-quiz-content");
+
+              var item =
+                QUIZ[state.quiz];
+
+              if (!item) {
+
+                q.innerHTML =
+                  "<h3>Quiz terminato</h3>" +
+                  "<p>Punteggio: <strong>" +
+                  state.score +
+                  " / " +
+                  QUIZ.length +
+                  "</strong></p>" +
+                  "<button class=\"studio-button\" " +
+                  "data-action=\"quiz-reset\">" +
+                  "Ricomincia quiz" +
+                  "</button>";
+
+                return;
+
+              }
+
+
+              var html =
+                "<div class=\"quiz-question\">" +
+                (state.quiz + 1) +
+                ". " +
+                item.q +
+                "</div>";
+
+
+              item.a.forEach(function (answer, i) {
+
+                html +=
+                  "<button class=\"quiz-option\" " +
+                  "data-action=\"quiz-answer\" " +
+                  "data-index=\"" +
+                  i +
+                  "\">" +
+                  answer +
+                  "</button>";
+
+              });
+
+
+              q.innerHTML = html;
+
+            }
+
+
+            function saveNotes() {
+
+              var value =
+                root()
+                  .querySelector("#studio-notes")
+                  .value;
+
+              localStorage.setItem(
+                "archeologiaHubStudioNotes",
+                value
+              );
+
+              alert("Appunti salvati.");
+
+            }
+
+
+            function loadNotes() {
+
+              var value =
+                localStorage.getItem(
+                  "archeologiaHubStudioNotes"
+                ) || "";
+
+              root()
+                .querySelector("#studio-notes")
+                .value = value;
+
+            }
+
+
+            function startTimer() {
+
+              if (state.timer) return;
+
+              state.timer =
+                setInterval(function () {
+
+                  if (state.seconds <= 0) {
+
+                    stopTimer();
+
+                    alert("Sessione terminata.");
+
+                    return;
+
+                  }
+
+                  state.seconds--;
+
+                  renderTimer();
+
+                }, 1000);
+
+            }
+
+
+            function stopTimer() {
+
+              if (state.timer) {
+
+                clearInterval(state.timer);
+
+                state.timer = null;
+
+              }
+
+            }
+
+
+            function resetTimer() {
+
+              stopTimer();
+
+              state.seconds = 1500;
+
+              renderTimer();
+
+            }
+
+
+            function renderTimer() {
+
+              var r = root();
+
+              var min =
+                Math.floor(
+                  state.seconds / 60
+                );
+
+              var sec =
+                state.seconds % 60;
+
+              r.querySelector(
+                "#studio-timer"
+              ).textContent =
+                String(min).padStart(2, "0") +
+                ":" +
+                String(sec).padStart(2, "0");
+
+            }
+
+
+            function handleAction(button) {
+
+              var action =
+                button.getAttribute("data-action");
+
+
+              if (action === "close") {
+
+                closeStudio();
+
+                return;
+
+              }
+
+
+              if (action === "notes") {
+
+                openPanel("studio-panel-notes");
+
+                loadNotes();
+
+                return;
+
+              }
+
+
+              if (action === "flash") {
+
+                openPanel("studio-panel-flash");
+
+                renderFlashcard();
+
+                return;
+
+              }
+
+
+              if (action === "flash-flip") {
+
+                state.flashBack =
+                  !state.flashBack;
+
+                renderFlashcard();
+
+                return;
+
+              }
+
+
+              if (action === "flash-next") {
+
+                state.flash =
+                  (state.flash + 1) %
+                  FLASHCARDS.length;
+
+                state.flashBack = false;
+
+                renderFlashcard();
+
+                return;
+
+              }
+
+
+              if (action === "quiz") {
+
+                state.quiz = 0;
+
+                state.score = 0;
+
+                openPanel("studio-panel-quiz");
+
+                renderQuiz();
+
+                return;
+
+              }
+
+
+              if (action === "quiz-answer") {
+
+                var index =
+                  Number(
+                    button.getAttribute(
+                      "data-index"
+                    )
+                  );
+
+                if (
+                  index ===
+                  QUIZ[state.quiz].correct
+                ) {
+
+                  state.score++;
+
+                }
+
+                state.quiz++;
+
+                renderQuiz();
+
+                return;
+
+              }
+
+
+              if (action === "quiz-reset") {
+
+                state.quiz = 0;
+
+                state.score = 0;
+
+                renderQuiz();
+
+                return;
+
+              }
+
+
+              if (action === "timer") {
+
+                openPanel("studio-panel-timer");
+
+                renderTimer();
+
+                return;
+
+              }
+
+
+                if (action === "timer-start") {
+
+            TIMER_START();
+
+            return;
+
+          }
+
+
+          if (action === "timer-pause") {
+
+            TIMER_PAUSE();
+
+            return;
+
+          }
+
+
+          if (action === "timer-reset") {
+
+            TIMER_RESET();
+
+            return;
+
+          }
+
+
+          if (action === "save-notes") {
+
+            saveNotes();
+
+            return;
+
+          }
+
+
+          if (action === "notes") {
+
+            openPanel("studio-panel-notes");
+
+            renderNotes();
+
+            return;
+
+          }
+
+
+          if (action === "note-save") {
+
+            saveNotes();
+
+            return;
+
+          }
+
+
+          if (action === "note-delete") {
+
+            var index =
+              Number(
+                button.getAttribute(
+                  "data-index"
+                )
+              );
+
+            if (
+              Number.isInteger(index) &&
+              index >= 0 &&
+              index < state.notes.length
+            ) {
+
+              state.notes.splice(
+                index,
+                1
+              );
+
+              saveState();
+
+            }
+
+            renderNotes();
+
+            return;
+
+          }
+
+
+          if (action === "flashcard") {
+
+            state.flashFlipped =
+              !state.flashFlipped;
+
+            renderFlashcards();
+
+            return;
+
+          }
+
+
+          if (action === "flash-next") {
+
+            state.flashIndex =
+              (
+                state.flashIndex + 1
+              ) %
+              FLASHCARDS.length;
+
+            state.flashFlipped =
+              false;
+
+            renderFlashcards();
+
+            return;
+
+          }
+
+
+          if (action === "flash-prev") {
+
+            state.flashIndex =
+              (
+                state.flashIndex -
+                1 +
+                FLASHCARDS.length
+              ) %
+              FLASHCARDS.length;
+
+            state.flashFlipped =
+              false;
+
+            renderFlashcards();
+
+            return;
+
+          }
+
+
+          if (action === "progress") {
+
+            openPanel(
+              "studio-panel-progress"
+            );
+
+            renderProgress();
+
+            return;
+
+          }
+
+
+          if (action === "exam-mode") {
+
+            openPanel(
+              "studio-panel-exam"
+            );
+
+            renderExamMode();
+
+            return;
+
+          }
+
+
+          if (action === "search") {
+
+            openPanel(
+              "studio-panel-search"
+            );
+
+            renderSearch();
+
+            return;
+
+          }
+
+
+          if (action === "home") {
+
+            openPanel(
+              "studio-panel-home"
+            );
+
+            renderHome();
+
+            return;
+
+          }
+
+
+          if (action === "close") {
+
+            CLOSE_STUDIO();
+
+            return;
+
+          }
+
+        }
+
+
+        ROOT.addEventListener(
+          "click",
+          HANDLE_CLICK,
+          true
+        );
+
+
+        window.openArcheologiaStudio =
+          function(){
+
+            OPEN_STUDIO();
+
+          };
+
+
+        window.closeArcheologiaStudio =
+          function(){
+
+            CLOSE_STUDIO();
+
+          };
+
+
+        window.ARCH_STUDIO_OPEN =
+          window.openArcheologiaStudio;
+
+
+        window.ARCH_STUDIO_CLOSE =
+          window.closeArcheologiaStudio;
+
+
+      })();
+
+          EOF
+
+          test -s \
+            /tmp/studio-v31.js
+
+          echo "MOTORE STUDIO V31 CREATO."
+
+
+      - name: Integra Centro Studio V31
+        shell: bash
+        run: |
+          set -e
+
+          HTML="ArcheologiaHubAndroid/app/src/main/assets/index.html"
+
+          test -f "$HTML"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          html_path = Path(
+              "ArcheologiaHubAndroid/app/src/main/assets/index.html"
+          )
+
+          css_path = Path(
+              "/tmp/studio-v31/studio.css"
+          )
+
+          js_path = Path(
+              "/tmp/studio-v31.js"
+          )
+
+          html = html_path.read_text(
+              encoding="utf-8",
+              errors="ignore"
+          )
+
+          css = css_path.read_text(
+              encoding="utf-8"
+          )
+
+          js = js_path.read_text(
+              encoding="utf-8"
+          )
+
+          css_marker_start = (
+              '<style data-archeologia-v31-css="1">'
+          )
+
+                  js_marker_start = (
+              '<script data-archeologia-v31="1">'
+          )
+
+          while True:
+
+              start = html.find(
+                  css_marker_start
+              )
+
+              if start == -1:
+                  break
+
+              end = html.find(
+                  "</style>",
+                  start
+              )
+
+              if end == -1:
+                  break
+
+              end += len("</style>")
+
+              html = (
+                  html[:start]
+                  + html[end:]
+              )
+
+          while True:
+
+              start = html.find(
+                  js_marker_start
+              )
+
+              if start == -1:
+                  break
+
+              end = html.find(
+                  "</script>",
+                  start
+              )
+
+              if end == -1:
+                  break
+
+              end += len("</script>")
+
+              html = (
+                  html[:start]
+                  + html[end:]
+              )
+
+          css_block = (
+              '<style data-archeologia-v31-css="1">\n'
+              + css
+              + '\n</style>'
+          )
+
+          js_block = (
+              '<script data-archeologia-v31="1">\n'
+              + js
+              + '\n</script>'
+          )
+
+          if "</head>" not in html:
+              raise SystemExit(
+                  "ERRORE: </head> non trovato"
+              )
+
+          if "</body>" not in html:
+              raise SystemExit(
+                  "ERRORE: </body> non trovato"
+              )
+
+          html = html.replace(
+              "</head>",
+              css_block
+              + "\n</head>",
+              1
+          )
+
+          html = html.replace(
+              "</body>",
+              js_block
+              + "\n</body>",
+              1
+          )
+
+          html_path.write_text(
+              html,
+              encoding="utf-8"
+          )
+
+          print(
+              "Centro Studio V31 integrato."
+          )
+          PY
+
+          echo "INTEGRAZIONE V31 COMPLETATA."
+
+
+      - name: Correzione azione salva appunti
+        shell: bash
+        run: |
+          set -e
+
+          HTML="ArcheologiaHubAndroid/app/src/main/assets/index.html"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path(
+              "ArcheologiaHubAndroid/app/src/main/assets/index.html"
+          )
+
+          html = path.read_text(
+              encoding="utf-8",
+              errors="ignore"
+          )
+
+          old = """if (action === "progress") {
+
+            openPanel("studio-panel-progress");
+
+            return;
+
+          }"""
+
+          new = """if (action === "progress") {
+
+            openPanel("studio-panel-progress");
+
+            return;
+
+          }
+
+          if (action === "save-notes") {
+
+            saveNotes();
+
+            return;
+
+          }"""
+
+          if (
+              old in html
+              and
+              'action === "save-notes"'
+              not in html
+          ):
+
+              html = html.replace(
+                  old,
+                  new,
+                  1
+              )
+
+              path.write_text(
+                  html,
+                  encoding="utf-8"
+              )
+
+          print(
+              "Controllo salva appunti completato."
+          )
+          PY
+
+
+      - name: Verifica finale Studio V31
+        shell: bash
+        run: |
+          set -e
+
+          HTML="ArcheologiaHubAndroid/app/src/main/assets/index.html"
+
+          test -s "$HTML"
+
+          grep -q \
+            'data-archeologia-v31="1"' \
+            "$HTML"
+
+          grep -q \
+            'data-archeologia-v31-css="1"' \
+            "$HTML"
+
+          grep -q \
+            'arch-studio-v31' \
+            "$HTML"
+
+          grep -q \
+            'openArcheologiaStudio' \
+            "$HTML"
+
+          grep -q \
+            'closeArcheologiaStudio' \
+            "$HTML"
+
+          grep -q \
+            'save-notes' \
+            "$HTML"
+
+          echo "STUDIO V31 VERIFICATO."
+
+
+      - name: Controllo struttura Android
+        shell: bash
+        run: |
+          set -e
+
+          test -f \
+            ArcheologiaHubAndroid/gradlew
+
+          test -d \
+            ArcheologiaHubAndroid/app
+
+          test -f \
+            ArcheologiaHubAndroid/app/src/main/assets/index.html
+
+          echo "STRUTTURA ANDROID OK."
+
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -e
+
+          cd ArcheologiaHubAndroid
+
+          chmod +x gradlew
+
+          ./gradlew \
+            :app:assembleDebug \
+            --no-daemon \
+            --stacktrace
+
+
+      - name: Verifica APK
+        shell: bash
+        run: |
+          set -e
+
+          APK="ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk"
+
+          test -f "$APK"
+
+          test -s "$APK"
+
+          ls -lh "$APK"
+
+          echo "APK DEBUG CREATO CORRETTAMENTE."
+
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Archeologia-Hub-V31-APK
+          path: |
+            ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
