@@ -1339,41 +1339,47 @@ jobs:
 
           }
 
-        }
+              }
+
+          ROOT.addEventListener(
+            "click",
+            HANDLE_CLICK,
+            true
+          );
 
 
-        ROOT.addEventListener(
-          "click",
-          HANDLE_CLICK,
-          true
-        );
+          window.openArcheologiaStudio =
+            function(){
+
+              OPEN_STUDIO();
+
+            };
 
 
-        window.openArcheologiaStudio =
-          function(){
+          window.closeArcheologiaStudio =
+            function(){
 
-            OPEN_STUDIO();
+              CLOSE_STUDIO();
 
-          };
-
-
-        window.closeArcheologiaStudio =
-          function(){
-
-            CLOSE_STUDIO();
-
-          };
+            };
 
 
-        window.ARCH_STUDIO_OPEN =
-          window.openArcheologiaStudio;
+          window.ARCH_STUDIO_OPEN =
+            window.openArcheologiaStudio;
 
 
-        window.ARCH_STUDIO_CLOSE =
-          window.closeArcheologiaStudio;
+          window.ARCH_STUDIO_CLOSE =
+            window.closeArcheologiaStudio;
 
 
-      })();
+         })();
+
+          EOF
+
+          test -s \
+            /tmp/studio-v31.js
+
+          echo "MOTORE STUDIO V31 CREATO."
 
           EOF
 
