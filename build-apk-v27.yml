@@ -1,0 +1,222 @@
+name: Build Archeologia Hub V27
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Estrai V22
+        run: |
+          set -e
+          rm -rf ArcheologiaHubAndroid
+          unzip -q -o Archeologia_Hub_V22_PREMIUM_UI.zip
+
+      - name: Controlla progetto
+        run: |
+          set -e
+          test -f ArcheologiaHubAndroid/settings.gradle
+          test -f ArcheologiaHubAndroid/app/build.gradle
+          test -f ArcheologiaHubAndroid/app/src/main/AndroidManifest.xml
+          test -f ArcheologiaHubAndroid/app/src/main/java/it/archeologia/hub/MainActivity.java
+          test -f ArcheologiaHubAndroid/app/src/main/assets/index.html
+          test -f features/study.js
+          test -f features/study.css
+
+      - name: Correggi Area Studio V27
+        shell: bash
+        run: |
+          set -e
+
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("ArcheologiaHubAndroid/app/src/main/assets/index.html")
+          html = path.read_text(encoding="utf-8", errors="ignore")
+
+          new_function = r'''function v14RenderStudy(){
+            const sec=document.getElementById('study');
+            if(!sec)return;
+
+            const old=sec.querySelector('.v14-study-landing');
+            if(old)old.remove();
+
+            const wrap=document.createElement('div');
+            wrap.className='v14-study-landing';
+            wrap.innerHTML=`
+              <div class="v14-study-landing-hero">
+                <span class="v14-overline" style="color:#e4c99d">AREA STUDIO</span>
+                <h2>Il tuo spazio di studio</h2>
+                <p>Appunti, audio, materiali, riassunti, schemi e attività sono raccolti in un unico spazio. Le cartelle dei corsi restano disponibili senza confondere Studio con la gestione degli esami.</p>
+              </div>
+
+              <div class="v14-study-tools">
+                <button onclick="addItem('notes')"><b>📝 Appunti</b><small>Scrivi e organizza le tue note</small></button>
+                <button onclick="addItem('sessions')"><b>⏱️ Sessione di studio</b><small>Registra il tempo dedicato allo studio</small></button>
+                <button onclick="addItem('tasks')"><b>✓ Attività</b><small>Organizza ciò che devi fare</small></button>
+                <button onclick="go('materials')"><b>📂 Materiali</b><small>Documenti e fonti</small></button>
+                <button onclick="go('hubAudio');hubAfterPage('hubAudio')"><b>🎧 Audio</b><small>Registrazioni e lezioni</small></button>
+                <button onclick="go('hubSummaries');hubAfterPage('hubSummaries')"><b>▤ Riassunti</b><small>Ripasso sintetico</small></button>
+                <button onclick="go('hubSchemes');hubAfterPage('hubSchemes')"><b>⌘ Schemi</b><small>Concetti e collegamenti</small></button>
+                <button onclick="go('hubPhotos');hubAfterPage('hubPhotos')"><b>▧ Foto</b><small>Siti, reperti e immagini</small></button>
+              </div>
+
+              <div class="v15-study-personal">
+                <div class="v14-section-head">
+                  <div>
+                    <span class="v14-overline">CORSI E CARTELLE</span>
+                    <h3>Studia un insegnamento</h3>
+                  </div>
+                </div>
+                <div class="v14-study-exams">
+                  ${db.exams.map(x=>`<button class="v14-study-exam" onclick="hubOpenExam(${x.id})"><span>📚</span><div><b>${esc(x.name)}</b><small>${x.cfu?x.cfu+' CFU':'Idoneità'} · Apri cartella di studio</small></div><span>›</span></button>`).join('')}
+                </div>
+              </div>
+
+              <div class="v15-study-personal">
+                <div class="v14-section-head">
+                  <div>
+                    <span class="v14-overline">ORGANIZZAZIONE</span>
+                    <h3>Il tuo studio</h3>
+                  </div>
+                </div>
+                <div class="v15-personal-grid">
+                  <button onclick="addItem('notes')"><b>✎ Nuovo appunto</b><small>Annota una lezione o un concetto</small></button>
+                  <button onclick="addItem('sessions')"><b>◷ Sessione</b><small>Registra il tempo di studio</small></button>
+                  <button onclick="addItem('tasks')"><b>✓ Attività</b><small>Organizza ciò che devi fare</small></button>
+                </div>
+              </div>`;
+
+            sec.prepend(wrap);
+          }
+          '''
+
+          pattern = r"function v14RenderStudy\(\)\{.*?\n\}\nconst v14OldRender=render;"
+          patched, count = re.subn(
+              pattern,
+              new_function + "const v14OldRender=render;",
+              html,
+              count=1,
+              flags=re.S
+          )
+
+          if count != 1:
+              raise SystemExit("ERRORE: funzione v14RenderStudy non trovata.")
+
+          path.write_text(patched, encoding="utf-8")
+          print("Area Studio V27 applicata.")
+          PY
+
+      - name: Verifica JavaScript V27
+        run: |
+          set -e
+
+          python3 <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+
+          class Parser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.inside=False
+                  self.parts=[]
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == 'script':
+                      self.inside=True
+              def handle_endtag(self, tag):
+                  if tag.lower() == 'script':
+                      self.inside=False
+              def handle_data(self, data):
+                  if self.inside:
+                      self.parts.append(data)
+
+          p=Parser()
+          p.feed(Path("ArcheologiaHubAndroid/app/src/main/assets/index.html").read_text(encoding="utf-8",errors="ignore"))
+          Path("/tmp/archeologia-hub.js").write_text("\n".join(p.parts),encoding="utf-8")
+          PY
+
+          node --check /tmp/archeologia-hub.js
+          echo "JavaScript V27 valido."
+
+      - name: Copia Study Engine
+        run: |
+          set -e
+          ASSETS="ArcheologiaHubAndroid/app/src/main/assets"
+          cp features/study.js "$ASSETS/study.js"
+          cp features/study.css "$ASSETS/study.css"
+
+      - name: Integra Study Engine
+        run: |
+          set -e
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path("ArcheologiaHubAndroid/app/src/main/assets/index.html")
+          html = path.read_text(encoding="utf-8", errors="ignore")
+
+          css = '<link rel="stylesheet" href="study.css">'
+          js = '<script src="study.js"></script>'
+
+          if 'href="study.css"' not in html:
+              pos = html.lower().rfind('</head>')
+              if pos < 0:
+                  raise SystemExit('Tag </head> non trovato.')
+              html = html[:pos] + css + '\n' + html[pos:]
+
+          if 'src="study.js"' not in html:
+              pos = html.lower().rfind('</body>')
+              if pos < 0:
+                  raise SystemExit('Tag </body> non trovato.')
+              html = html[:pos] + js + '\n' + html[pos:]
+
+          path.write_text(html, encoding='utf-8')
+          PY
+
+      - name: Build APK
+        working-directory: ArcheologiaHubAndroid
+        run: |
+          set -e
+          gradle clean --no-daemon
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Verifica APK
+        run: |
+          set -e
+          APK="ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          ls -lh "$APK"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Archeologia-Hub-V27-APK
+          path: ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Build completata
+        run: echo "Archeologia Hub V27 compilata correttamente."
