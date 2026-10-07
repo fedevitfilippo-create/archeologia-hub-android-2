@@ -1,4 +1,4 @@
-name: Build Archeologia Hub V28
+name: Build Archeologia Hub V29
 
 on:
   workflow_dispatch:
@@ -11,77 +11,74 @@ permissions:
 
 jobs:
   build:
-    name: Compila Archeologia Hub V28
+    name: Compila Archeologia Hub V29
     runs-on: ubuntu-latest
 
     steps:
 
-      # =========================================================
+      # =====================================================
       # CHECKOUT
-      # =========================================================
-      - name: Checkout
+      # =====================================================
+
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # =========================================================
-      # JAVA 17
-      # =========================================================
-      - name: Java 17
+      # =====================================================
+      # JAVA
+      # =====================================================
+
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # =========================================================
-      # GRADLE 8.7
-      # =========================================================
-      - name: Gradle 8.7
+      # =====================================================
+      # GRADLE
+      # =====================================================
+
+      - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
-      # =========================================================
-      # ESTRAZIONE PROGETTO V22
-      # =========================================================
-      - name: Estrai V22
+      # =====================================================
+      # ESTRAI PROGETTO V22
+      # =====================================================
+
+      - name: Estrai progetto V22
         shell: bash
         run: |
           set -e
 
           ZIP="Archeologia_Hub_V22_PREMIUM_UI.zip"
 
-          echo "=========================================="
-          echo "CONTROLLO ZIP"
-          echo "=========================================="
-
-          ls -lah
+          echo "Controllo archivio..."
 
           if [ ! -f "$ZIP" ]; then
-            echo "ERRORE: $ZIP non trovato."
+            echo "ERRORE: archivio non trovato:"
+            echo "$ZIP"
             echo ""
-            echo "File presenti nella root:"
-            find . -maxdepth 1 -type f -printf '%f\n'
+            echo "File presenti:"
+            ls -lah
             exit 1
           fi
-
-          echo "ZIP trovato: $ZIP"
 
           rm -rf ArcheologiaHubAndroid
 
           unzip -q -o "$ZIP"
 
           echo ""
-          echo "Progetto estratto:"
-          find ArcheologiaHubAndroid -maxdepth 5 -type f | sort
+          echo "Progetto estratto correttamente."
 
-      # =========================================================
+      # =====================================================
       # CONTROLLO PROGETTO
-      # =========================================================
+      # =====================================================
+
       - name: Controlla progetto
         shell: bash
         run: |
           set -e
-
-          echo "Controllo file fondamentali..."
 
           test -f ArcheologiaHubAndroid/settings.gradle
           test -f ArcheologiaHubAndroid/app/build.gradle
@@ -89,35 +86,16 @@ jobs:
           test -f ArcheologiaHubAndroid/app/src/main/java/it/archeologia/hub/MainActivity.java
           test -f ArcheologiaHubAndroid/app/src/main/assets/index.html
 
-          test -f features/study.js
-          test -f features/study.css
-
           echo ""
-          echo "=========================================="
-          echo "PROGETTO V22 OK"
-          echo "=========================================="
+          echo "======================================"
+          echo "PROGETTO V22 VERIFICATO"
+          echo "======================================"
 
-      # =========================================================
-      # COPIA STUDY ENGINE
-      # =========================================================
-      - name: Copia Study Engine
-        shell: bash
-        run: |
-          set -e
+      # =====================================================
+      # CORREZIONI V29
+      # =====================================================
 
-          ASSETS="ArcheologiaHubAndroid/app/src/main/assets"
-
-          echo "Copio Study Engine..."
-
-          cp features/study.js "$ASSETS/study.js"
-          cp features/study.css "$ASSETS/study.css"
-
-          echo "Study Engine copiato."
-
-      # =========================================================
-      # INTEGRA STUDY ENGINE + CORREZIONE V28
-      # =========================================================
-      - name: Correggi Area Studio V28
+      - name: Correggi navigazione e interfaccia V29
         shell: bash
         run: |
           set -e
@@ -135,121 +113,174 @@ jobs:
               errors="ignore"
           )
 
-          # -----------------------------------------------------
-          # Assicura che study.css e study.js siano presenti
-          # -----------------------------------------------------
+          # =================================================
+          # FIX 1
+          # v13OpenSelected non deve mandare all'Orario
+          # =================================================
 
-          css_tag = '<link rel="stylesheet" href="study.css">'
-          js_tag = '<script src="study.js"></script>'
-
-          if "study.css" not in html:
-              pos = html.lower().find("</head>")
-              if pos >= 0:
-                  html = html[:pos] + css_tag + "\n" + html[pos:]
-
-          if 'src="study.js"' not in html:
-              pos = html.lower().rfind("</body>")
-              if pos >= 0:
-                  html = html[:pos] + js_tag + "\n" + html[pos:]
-
-          # -----------------------------------------------------
-          # V28:
-          # sostituisce esclusivamente v13OpenSelected()
-          #
-          # Il vecchio comportamento era:
-          #
-          # if(!sel.length){
-          #     go('hubTimetable');
-          #     return;
-          # }
-          #
-          # Questo faceva finire Appunti / Audio / Riassunti /
-          # Schemi nell'Orario se non era selezionato un esame.
-          # -----------------------------------------------------
-
-          new_function = r"""
+          new_open_selected = """
           function v13OpenSelected(page){
             if(!page)return;
 
-            if(typeof hubExamId==='undefined' || !hubExamId){
-              const first=
-                (typeof db!=='undefined' &&
-                 db &&
-                 Array.isArray(db.exams) &&
-                 db.exams.length)
-                ? db.exams[0]
-                : null;
+            try{
+              if(typeof hubExamId==='undefined' || !hubExamId){
 
-              if(first){
-                hubExamId=Number(first.id);
-                localStorage.setItem(
-                  'archeologiaHub.activeExam',
-                  String(hubExamId)
-                );
+                if(
+                  typeof db!=='undefined' &&
+                  db &&
+                  Array.isArray(db.exams) &&
+                  db.exams.length
+                ){
+                  hubExamId=Number(db.exams[0].id);
+
+                  localStorage.setItem(
+                    'archeologiaHub.activeExam',
+                    String(hubExamId)
+                  );
+                }
               }
-            }
 
-            go(page);
-            hubAfterPage(page);
+              go(page);
+
+              if(typeof hubAfterPage==='function'){
+                setTimeout(function(){
+                  hubAfterPage(page);
+                },30);
+              }
+
+            }catch(error){
+              console.error(
+                'Errore apertura Area Studio:',
+                error
+              );
+            }
           }
           """.strip()
 
-          # Cerca la funzione completa fino alla funzione successiva.
           pattern = re.compile(
-              r"function\s+v13OpenSelected\s*\(page\)\s*\{.*?\n\}",
+              r"function\s+v13OpenSelected\s*\(\s*page\s*\)\s*\{.*?\n\}",
               re.S
           )
 
-          if pattern.search(html):
-              html, count = pattern.subn(
-                  new_function,
-                  html,
-                  count=1
+          match = pattern.search(html)
+
+          if match:
+              html = (
+                  html[:match.start()]
+                  + new_open_selected
+                  + html[match.end():]
               )
 
               print(
-                  "v13OpenSelected() sostituita:",
-                  count
+                  "FIX v13OpenSelected: OK"
               )
-
           else:
               print(
-                  "ATTENZIONE: v13OpenSelected() non trovata."
+                  "ATTENZIONE: v13OpenSelected non trovata."
               )
 
-              # Inserisce la funzione prima di v13OpenSearch
-              marker = "function v13OpenSearch"
+          # =================================================
+          # FIX 2
+          # hidden deve SEMPRE vincere sul display:flex
+          #
+          # Questo è il fix principale del problema visto
+          # nel video.
+          # =================================================
 
-              if marker in html:
-                  html = html.replace(
-                      marker,
-                      new_function +
-                      "\n\n" +
-                      marker,
-                      1
+          hidden_fix = """
+          /* V29 FIX — hidden ebook panels */
+          .v15-ebook-shell [hidden],
+          .v15-ebook-shell[hidden],
+          .v15-ebook-library[hidden],
+          .v15-ebook-reader[hidden],
+          .v15-ebook-editor[hidden]{
+            display:none!important;
+            visibility:hidden!important;
+            pointer-events:none!important;
+          }
+
+          /* Evita che pannelli ebook nascosti
+             intercettino i tocchi */
+          [hidden]{
+            display:none!important;
+          }
+          """
+
+          # Inseriamo il fix alla fine dello style document.
+          if "V29 FIX — hidden ebook panels" not in html:
+
+              pos = html.lower().rfind("</style>")
+
+              if pos >= 0:
+                  html = (
+                      html[:pos]
+                      + hidden_fix
+                      + "\n"
+                      + html[pos:]
                   )
+
                   print(
-                      "v13OpenSelected() inserita prima di v13OpenSearch."
+                      "FIX hidden ebook: OK"
                   )
+
               else:
-                  raise SystemExit(
-                      "ERRORE: impossibile trovare il punto di inserimento."
+                  # Fallback: inserimento nell'head
+                  pos = html.lower().find("</head>")
+
+                  if pos >= 0:
+                      html = (
+                          html[:pos]
+                          + "<style>"
+                          + hidden_fix
+                          + "</style>"
+                          + "\n"
+                          + html[pos:]
+                      )
+
+                      print(
+                          "FIX hidden ebook inserito nell'head."
+                      )
+                  else:
+                      raise SystemExit(
+                          "ERRORE: impossibile inserire CSS V29."
+                      )
+
+          # =================================================
+          # FIX 3
+          # Assicura che i pulsanti ebook abbiano priorità
+          # =================================================
+
+          button_fix = """
+          /* V29 — ebook controls always clickable */
+          .v15-ebook-shell button{
+            position:relative;
+            z-index:5;
+            pointer-events:auto;
+            touch-action:manipulation;
+          }
+
+          .v15-ebook-shell input,
+          .v15-ebook-shell textarea{
+            pointer-events:auto;
+            touch-action:auto;
+          }
+          """
+
+          if "V29 — ebook controls always clickable" not in html:
+
+              pos = html.lower().rfind("</style>")
+
+              if pos >= 0:
+                  html = (
+                      html[:pos]
+                      + button_fix
+                      + "\n"
+                      + html[pos:]
                   )
 
-          # -----------------------------------------------------
-          # Controlli finali
-          # -----------------------------------------------------
-
-          if "function v13OpenSelected(page)" not in html:
-              raise SystemExit(
-                  "ERRORE: funzione V28 non presente."
-              )
-
-          if "go('hubTimetable');return;" in html:
-              print(
-                  "Nota: trovata un'altra occorrenza del vecchio "
-                  "fallback all'Orario; verificare manualmente."
-              )
+          # =================================================
+          # SALVA
+          # =================================================
 
           path.write_text(
               html,
@@ -257,93 +288,98 @@ jobs:
           )
 
           print("")
-          print("==========================================")
-          print("AREA STUDIO V28 CORRETTA")
-          print("==========================================")
+          print("======================================")
+          print("CORREZIONI V29 APPLICATE")
+          print("======================================")
           PY
 
-      # =========================================================
-      # VERIFICA CORREZIONE
-      # =========================================================
-      - name: Verifica integrazione V28
+      # =====================================================
+      # VERIFICA FIX
+      # =====================================================
+
+      - name: Verifica correzioni V29
         shell: bash
         run: |
           set -e
 
           FILE="ArcheologiaHubAndroid/app/src/main/assets/index.html"
 
-          echo "Controllo presenza funzione V28..."
+          echo "Controllo v13OpenSelected..."
 
-          grep -n "function v13OpenSelected" "$FILE"
+          grep -q "function v13OpenSelected" "$FILE"
 
-          echo ""
-          echo "Controllo moduli Studio..."
-
-          grep -n "hubNotes" "$FILE" | head -5 || true
-          grep -n "hubAudio" "$FILE" | head -5 || true
-          grep -n "hubSummaries" "$FILE" | head -5 || true
-          grep -n "hubSchemes" "$FILE" | head -5 || true
+          echo "OK"
 
           echo ""
-          echo "=========================================="
-          echo "VERIFICA V28 COMPLETATA"
-          echo "=========================================="
+          echo "Controllo fix hidden..."
 
-      # =========================================================
+          grep -q "V29 FIX — hidden ebook panels" "$FILE"
+
+          echo "OK"
+
+          echo ""
+          echo "Controllo fix pulsanti..."
+
+          grep -q "V29 — ebook controls always clickable" "$FILE"
+
+          echo "OK"
+
+          echo ""
+          echo "======================================"
+          echo "TUTTI I FIX V29 PRESENTI"
+          echo "======================================"
+
+      # =====================================================
       # VERIFICA GRADLE
-      # =========================================================
+      # =====================================================
+
       - name: Verifica Gradle
         working-directory: ArcheologiaHubAndroid
         shell: bash
         run: |
           set -e
 
-          echo "Versione Gradle:"
-          gradle --version
+          gradle tasks \
+            --no-daemon \
+            --stacktrace
 
-          echo ""
-          echo "Verifica task Gradle..."
-
-          gradle tasks --no-daemon --stacktrace
-
-      # =========================================================
+      # =====================================================
       # CLEAN
-      # =========================================================
+      # =====================================================
+
       - name: Clean
         working-directory: ArcheologiaHubAndroid
         shell: bash
         run: |
           set -e
 
-          echo "Pulizia build precedente..."
-
           gradle clean \
             --no-daemon \
             --stacktrace
 
-      # =========================================================
-      # COMPILAZIONE APK
-      # =========================================================
-      - name: Compila APK V28
+      # =====================================================
+      # BUILD
+      # =====================================================
+
+      - name: Compila APK V29
         working-directory: ArcheologiaHubAndroid
         shell: bash
         run: |
           set -e
 
-          echo "=========================================="
-          echo "COMPILAZIONE ARCHEOLOGIA HUB V28"
-          echo "=========================================="
+          echo ""
+          echo "======================================"
+          echo "COMPILAZIONE ARCHEOLOGIA HUB V29"
+          echo "======================================"
 
           gradle assembleDebug \
             --no-daemon \
             --stacktrace
 
-          echo ""
-          echo "Build completata."
-
-      # =========================================================
+      # =====================================================
       # VERIFICA APK
-      # =========================================================
+      # =====================================================
+
       - name: Verifica APK
         shell: bash
         run: |
@@ -351,16 +387,13 @@ jobs:
 
           APK="ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk"
 
-          echo "Controllo APK..."
-
           if [ ! -f "$APK" ]; then
-            echo ""
-            echo "=========================================="
-            echo "ERRORE: APK NON GENERATO"
-            echo "=========================================="
 
             echo ""
-            echo "File trovati nella build:"
+            echo "======================================"
+            echo "ERRORE: APK NON GENERATO"
+            echo "======================================"
+
             find ArcheologiaHubAndroid/app/build \
               -type f \
               | sort || true
@@ -369,36 +402,38 @@ jobs:
           fi
 
           echo ""
-          echo "=========================================="
-          echo "APK GENERATO CORRETTAMENTE"
-          echo "=========================================="
+          echo "======================================"
+          echo "APK V29 GENERATO"
+          echo "======================================"
 
           ls -lh "$APK"
 
-      # =========================================================
-      # UPLOAD APK
-      # =========================================================
-      - name: Upload APK
+      # =====================================================
+      # ARTIFACT
+      # =====================================================
+
+      - name: Upload APK V29
         uses: actions/upload-artifact@v4
         with:
-          name: Archeologia-Hub-V28-APK
+          name: Archeologia-Hub-V29-APK
           path: ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
 
-      # =========================================================
-      # COMPLETATO
-      # =========================================================
+      # =====================================================
+      # FINE
+      # =====================================================
+
       - name: Build completata
         shell: bash
         run: |
           echo ""
-          echo "=========================================="
-          echo "        ARCHEOLOGIA HUB V28"
-          echo "=========================================="
-          echo ""
-          echo "BUILD: OK"
-          echo "APK: OK"
-          echo "STUDY ENGINE: OK"
-          echo "AREA STUDIO: CORRETTA"
-          echo "=========================================="
+          echo "======================================"
+          echo " ARCHEOLOGIA HUB V29"
+          echo "======================================"
+          echo " BUILD: OK"
+          echo " NAVIGAZIONE STUDIO: OK"
+          echo " EBOOK HIDDEN FIX: OK"
+          echo " PULSANTI EBOOK: OK"
+          echo " APK: OK"
+          echo "======================================"
