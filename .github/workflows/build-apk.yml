@@ -1,0 +1,222 @@
+name: Build Archeologia Hub
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ==========================================
+      # 1. CHECKOUT REPOSITORY
+      # ==========================================
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ==========================================
+      # 2. JAVA 17
+      # ==========================================
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ==========================================
+      # 3. GRADLE 8.7
+      # ==========================================
+      - name: Setup Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      # ==========================================
+      # 4. TROVA ZIP
+      # ==========================================
+      - name: Trova progetto
+        shell: bash
+        run: |
+          set -e
+
+          echo "File nella repository:"
+          ls -lah
+
+          ZIP="Archeologia_Hub_V22_PREMIUM_UI.zip"
+
+          if [ ! -f "$ZIP" ]; then
+            echo ""
+            echo "ERRORE: ZIP non trovato:"
+            echo "$ZIP"
+            echo ""
+            echo "ZIP disponibili:"
+            find . -maxdepth 1 -type f -name "*.zip" -printf '%f\n'
+            exit 1
+          fi
+
+          echo ""
+          echo "ZIP trovato:"
+          ls -lh "$ZIP"
+
+      # ==========================================
+      # 5. ESTRAZIONE
+      # ==========================================
+      - name: Estrai progetto Android
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf ArcheologiaHubAndroid
+
+          unzip -q -o \
+            Archeologia_Hub_V22_PREMIUM_UI.zip
+
+          echo ""
+          echo "Progetto estratto."
+
+          find ArcheologiaHubAndroid -maxdepth 5 -type f | sort
+
+      # ==========================================
+      # 6. CONTROLLO STRUTTURA
+      # ==========================================
+      - name: Controlla progetto
+        shell: bash
+        run: |
+          set -e
+
+          echo "Controllo file fondamentali..."
+
+          test -f ArcheologiaHubAndroid/settings.gradle
+          test -f ArcheologiaHubAndroid/build.gradle
+          test -f ArcheologiaHubAndroid/app/build.gradle
+          test -f ArcheologiaHubAndroid/app/src/main/AndroidManifest.xml
+          test -f ArcheologiaHubAndroid/app/src/main/java/it/archeologia/hub/MainActivity.java
+
+          echo ""
+          echo "Struttura progetto OK."
+
+      # ==========================================
+      # 7. MOSTRA CONFIGURAZIONE
+      # ==========================================
+      - name: Controlla configurazione Android
+        working-directory: ArcheologiaHubAndroid
+        shell: bash
+        run: |
+          set -e
+
+          echo "======================================"
+          echo "ANDROID CONFIG"
+          echo "======================================"
+
+          grep -nE \
+            "applicationId|versionCode|versionName|minSdk|targetSdk|compileSdk" \
+            app/build.gradle || true
+
+      # ==========================================
+      # 8. GRADLE TASKS
+      # ==========================================
+      - name: Verifica Gradle
+        working-directory: ArcheologiaHubAndroid
+        shell: bash
+        run: |
+          set -e
+
+          gradle --version
+
+          echo ""
+          echo "Verifico il progetto..."
+
+          gradle tasks \
+            --no-daemon \
+            --stacktrace
+
+      # ==========================================
+      # 9. CLEAN
+      # ==========================================
+      - name: Clean
+        working-directory: ArcheologiaHubAndroid
+        shell: bash
+        run: |
+          set -e
+
+          gradle clean \
+            --no-daemon \
+            --stacktrace
+
+      # ==========================================
+      # 10. BUILD APK
+      # ==========================================
+      - name: Compila APK
+        working-directory: ArcheologiaHubAndroid
+        shell: bash
+        run: |
+          set -e
+
+          echo "======================================"
+          echo "COMPILAZIONE APK"
+          echo "======================================"
+
+          gradle assembleDebug \
+            --no-daemon \
+            --stacktrace
+
+      # ==========================================
+      # 11. TROVA APK
+      # ==========================================
+      - name: Verifica APK
+        shell: bash
+        run: |
+          set -e
+
+          APK="ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo ""
+            echo "ERRORE: APK non generato."
+            echo ""
+            echo "File generati:"
+            find ArcheologiaHubAndroid/app/build \
+              -type f \
+              | sort || true
+
+            exit 1
+          fi
+
+          echo ""
+          echo "======================================"
+          echo "APK GENERATO"
+          echo "======================================"
+
+          ls -lh "$APK"
+
+      # ==========================================
+      # 12. UPLOAD APK
+      # ==========================================
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Archeologia-Hub-APK
+          path: ArcheologiaHubAndroid/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # ==========================================
+      # 13. FINE
+      # ==========================================
+      - name: Fine
+        run: |
+          echo ""
+          echo "======================================"
+          echo " ARCHEOLOGIA HUB"
+          echo " BUILD COMPLETATA"
+          echo "======================================"
+          echo ""
+          echo "Artifact: Archeologia-Hub-APK"
