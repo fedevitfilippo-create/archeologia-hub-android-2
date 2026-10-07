@@ -1639,8 +1639,7 @@ jobs:
         run: |
           set -e
 
-          test -f \
-            ArcheologiaHubAndroid/gradlew
+         test -f ArcheologiaHubAndroid/app/build.gradle
 
           test -d \
             ArcheologiaHubAndroid/app
@@ -1658,12 +1657,10 @@ jobs:
 
           cd ArcheologiaHubAndroid
 
-          chmod +x gradlew
-
-          ./gradlew \
-            :app:assembleDebug \
-            --no-daemon \
-            --stacktrace
+          gradle \
+         :app:assembleDebug \
+         --no-daemon \
+         --stacktrace
 
 
       - name: Verifica APK
